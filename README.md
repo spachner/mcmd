@@ -10,3 +10,5 @@ Are you often have to repeat shell commands? Are you tired by doing the same key
 Then mcmd could you save time. Once you have mcmd configured with commands you would like to repeat often, then just
 
 * Click on button by mouse and you are done
+
+Please have a look into the wiki for installation and screenshots. Comments are welcome.
