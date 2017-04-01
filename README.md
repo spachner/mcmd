@@ -11,4 +11,4 @@ Then mcmd could you save time. Once you have mcmd configured with commands you w
 
 * Click on button by mouse and you are done
 
-Please have a look into the wiki for installation and screenshots. Comments are welcome.
+Please have a look into the https://github.com/spachner/mcmd/wiki for installation and screenshots. Comments are welcome.
