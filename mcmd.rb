@@ -179,7 +179,6 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     initThread = Thread.new do
         sleep(0.5)
         modifyCheckState
-        puts "@logOnOff.checked? #{@logOnOff.checked?}"
         logOnOffCheckState
     end
 end
