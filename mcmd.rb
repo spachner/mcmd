@@ -2,21 +2,23 @@ require 'open3'
 require 'yaml'
 
 # Usage:
-#   cshoes mcmd.rb [<my-conf-file>.yaml]
+#   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
+#   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 #
 
+$debug         = false
 $cfgUseLog     = false # Experimental: Log widget will hang app sometimes
 $cfgShowModify = false
-$cfgHomeDir    = "/Users/spachner/Documents/dev/spr/mcmd"
-$specFileName  = 'mcmd-conf.yaml' # defaile file name, my be overritten by command line argument
+$cfgHomeDir    = "/Users/spachner/Documents/dev/spr/segger"
+$specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default file name, may be overritten by command line argument
 $exampleSpec   =
 [
-    ['ls -1',                'ls -1'],
-    ['ls -l',                'ls -l'],
-    ['stdout err test',      './testcmd.bash'],
-    ['pwd',                  'pwd'],
-    ['cat large',            'cat /var/log/monthly.out'],
-    ['edit mcmd.rb',         'atom /Users/spachner/Documents/dev/spr/mcmd/mcmd.rb']
+    ['ls -1',           'ls -1'],
+    ['ls -l',           'ls -l'],
+    ['stdout err test', './testcmd.bash'],
+    ['pwd',             'pwd'],
+    ['cat large',       'cat /var/log/monthly.out'],
+    ['edit mcmd.rb',    'atom /Users/spachner/Documents/dev/spr/mcmd/mcmd.rb']
 ]
 
 trap("SIGINT") {
@@ -25,22 +27,23 @@ trap("SIGINT") {
 }
 
 def dumpSpec s
-    s.size.times do |c|
-        puts "CmdText >#{s[c][0]}<,\tcmd >#{s[c][1]}<"
+    s.size.times do |cmdIdx|
+        puts "CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
     end
 end
 
 def readSpec fileName
     if !File.file? fileName
+        #puts "conf dir = >#{File.expand_path('./', fileName)}<" if $debug
         abort "Cannot read file >#{fileName}<"
     end
     $cfgSpec = YAML.load_file fileName
-    puts "Read spec from >#{fileName}<"
+    puts "Reading spec from >#{fileName}<"
 end
 
 def writeSpec fileName, spec
     File.open(fileName, 'w') { |f| f.write spec.to_yaml }
-    puts "Wrote spec to >#{fileName}<"
+    puts "Writing spec to >#{fileName}<"
 end
 
 if ARGV.size-1 < 1
@@ -54,11 +57,11 @@ if ARGV.size-1 < 1
     end
 else
     $specFileName = ARGV[1]
-    puts "Arg given, reading spec from file >#{$specFileName}<"
+    puts "Arg given, using spec file >#{$specFileName}<"
     readSpec $specFileName
 end
 
-#dumpSpec $cfgSpec
+dumpSpec $cfgSpec if $debug
 
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     @spec    = $cfgSpec
@@ -96,9 +99,9 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 end
                 #---------------------------------------------------------------
                 @button = Array.new
-                @spec.size.times do |c|
+                @spec.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @button[c] = button @spec[c][0], :width => lstackWidth
+                        @button[cmdIdx] = button @spec[cmdIdx][0], :width => lstackWidth
                     end
                 end
             end
@@ -118,13 +121,13 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 }
                 #---------------------------------------------------------------
                 @cmd = Array.new
-                @spec.size.times do |c|
+                @spec.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @cmd[c] = edit_line(:width => rstackWidth) do | edit |
-                            @spec[c][1] = edit.text
-                            dumpSpec @spec
+                        @cmd[cmdIdx] = edit_line(:width => rstackWidth) do | edit |
+                            @spec[cmdIdx][1] = edit.text
+                            dumpSpec @spec if $debug
                         end
-                        @cmd[c].text = @spec[c][1]
+                        @cmd[cmdIdx].text = @spec[cmdIdx][1]
                     end
                 end
                 #---------------------------------------------------------------
@@ -170,7 +173,6 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     def logOnOffCheckState
         if @logOnOff.checked?
             @useLog = confirm("Sorry, Log widget is expermental. Expect freezing app on large output?")
-            puts "----------Answer #{@useLog }"
             @logOnOff.checked = @useLog
             @log.show
         else
@@ -179,38 +181,49 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
         end
     end
 
-    # Event handler ------------------------------------------------------------
-    @spec.size.times do |c|
-        @button[c].click do
-            appendLog "execute >#{@spec[c][1]}<\n"
-
-            clearLog
-            exe = @spec[c][1].split[0]   # make from e.g. "ls -1" -> "ls"
-            if exe.start_with?'./'
-                exe = @homeDir + '/' + exe
-            end
-            ok = system "which #{exe}"
-            if !ok
-                appendLog ">#{@spec[c][1]}< -> >#{exe}< not executable"
-            else
-                if @cmdActive
-                    appendLog "Other cmd active, ignored"
-                    return
-                end
-                @cmdActive = true
-                t = Thread.new do
-                    Open3.popen2e(@spec[c][1], :chdir => @homeDir) do
-                        | stdin, stdout_and_stderr, wait_thr |
-                        #stdin.close
-                        prependStr = "pid #{wait_thr[:pid]}: "
-                        stdout_and_stderr.each do |line|
-                            appendLog prependStr + line
-                        end
+    def exeCmd cmdIdx
+        if @cmdActive
+            appendLog "Other cmd active, ignored"
+        else
+            @cmdActive = true
+            t = Thread.new do
+                Open3.popen2e(@spec[cmdIdx][1], :chdir => @homeDir) do
+                    | stdin, stdout_and_stderr, wait_thr |
+                    #stdin.close
+                    prependStr = "pid #{wait_thr[:pid]}: "
+                    stdout_and_stderr.each do |line|
+                        appendLog prependStr + line
                     end
-                    appendLog '********** Command finished ******'
-                    @cmdActive = false
                 end
-                #t.join # wait for end of thread
+                appendLog '********** Command finished ******'
+                @cmdActive = false
+            end
+            #t.join # wait for end of thread
+        end
+    end
+
+    def getCmdExecutable cmdIdx
+        exe = @spec[cmdIdx][1].split[0]   # make from e.g. "ls -1" -> "ls"
+        if exe.start_with?'./'
+            exe = @homeDir + '/' + exe
+        end
+        exe
+    end
+
+    def isCmdExecutable executable
+        system "which #{executable}"
+    end
+
+    # Event handler ------------------------------------------------------------
+    @spec.size.times do |cmdIdx|
+        @button[cmdIdx].click do
+            appendLog "execute >#{@spec[cmdIdx][1]}<\n"
+            clearLog
+            executable = getCmdExecutable cmdIdx
+            if isCmdExecutable executable
+                exeCmd cmdIdx
+            else
+                appendLog ">#{@spec[cmdIdx][1]}< -> >#{executable}< not executable"
             end
         end
     end
