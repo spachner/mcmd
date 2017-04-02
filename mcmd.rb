@@ -5,21 +5,32 @@ require 'yaml'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 #
-
+$specVersion   = 1
 $debug         = false
 $cfgUseLog     = false # Experimental: Log widget will hang app sometimes
 $cfgShowModify = false
-$cfgHomeDir    = "/Users/spachner/Documents/dev/spr/segger"
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default file name, may be overritten by command line argument
-$exampleSpec   =
-[
-    ['ls -1',           'ls -1'],
-    ['ls -l',           'ls -l'],
-    ['stdout err test', './testcmd.bash'],
-    ['pwd',             'pwd'],
-    ['cat large',       'cat /var/log/monthly.out'],
-    ['edit mcmd.rb',    'atom /Users/spachner/Documents/dev/spr/mcmd/mcmd.rb']
-]
+
+$specVersionKey = 'version'
+$specBaseDirKey = 'baseDir'
+$specCommandKey = 'commands'
+
+$exampleSpec = {
+    $specVersionKey => $specVersion,
+    $specBaseDirKey => Dir.pwd,
+    $specCommandKey => [
+        ['ls -1',           'ls -1'],                       # arguments (here '-1') as just added to command string
+        ['ls -l',           'ls -l'],
+        ['stdout err test', './testcmd.bash'],              # preceed command with './' when baseDir would be used,
+                                                            # otherwise PATH is used to locate command. testcmd.bash
+                                                            # outputs to strout and stderr which both are replied on
+                                                            # console where mcmd has been started from. And on log widget
+                                                            # when enabled
+        ['pwd',             'pwd'],
+        ['cat large',       'cat /var/log/monthly.out'],    # test which output a large file
+        ['edit mcmd.rb',    "atom #{Dir.pwd}/mcmd.rb"]
+    ]
+}
 
 trap("SIGINT") {
     puts "Exit pending. Please click into GUI window to finalize exit"
@@ -61,11 +72,29 @@ else
     readSpec $specFileName
 end
 
-dumpSpec $cfgSpec if $debug
+def getSpecVersion
+    $cfgSpec[$specVersionKey]
+end
+
+def getSpecBaseDir
+    $cfgSpec[$specBaseDirKey]
+end
+
+def getSpecCommands
+    $cfgSpec[$specCommandKey]
+end
+
+if getSpecVersion != $specVersion
+    abort "Wrong spec version. Is #{getSpecVersion}, expected #{$specVersion}"
+end
+
+#$cfgHomeDir = getSpecBaseDir
+
+dumpSpec getSpecCommands if $debug
 
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
-    @spec    = $cfgSpec
-    @homeDir = $cfgHomeDir
+    @spec    = getSpecCommands  #$cfgSpec
+    @homeDir = getSpecBaseDir   #$cfgHomeDir
     @useLog  = $cfgUseLog
 
     def clearLog
