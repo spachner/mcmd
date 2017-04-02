@@ -4,13 +4,21 @@ require 'yaml'
 # Usage:
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
-#
-$specVersion   = 1
-$debug         = false
-$cfgUseLog     = false # Experimental: Log widget will hang app sometimes
-$cfgShowModify = false
-$specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default file name, may be overritten by command line argument
 
+$specVersion   = 1      # Just in case the spec file format will change in future
+$debug         = false  # true for a little debug
+$cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
+$cfgShowModify = false  # default state of option
+$specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
+
+# this allows to stop mcmd by CTRL-C in shell where cshoes has been startet. Unfottunalely an additional
+# mouse click is needed, seems to be a bug in Shoes
+trap("SIGINT") {
+    puts "Exit pending. Please click into GUI window to finalize exit"
+    Shoes.quit
+}
+
+#--- spec file handling --------------------------------------------------------
 $specVersionKey = 'version'
 $specBaseDirKey = 'baseDir'
 $specCommandKey = 'commands'
@@ -31,17 +39,6 @@ $exampleSpec = {
         ['edit mcmd.rb',    "atom #{Dir.pwd}/mcmd.rb"]
     ]
 }
-
-trap("SIGINT") {
-    puts "Exit pending. Please click into GUI window to finalize exit"
-    Shoes.quit
-}
-
-def dumpSpec s
-    s.size.times do |cmdIdx|
-        puts "CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
-    end
-end
 
 def readSpec fileName
     if !File.file? fileName
@@ -84,14 +81,22 @@ def getSpecCommands
     $cfgSpec[$specCommandKey]
 end
 
+def dumpSpec s
+    puts "Version: #{getSpecVersion}"
+    puts "BaseDir: #{getSpecBaseDir}"
+    puts "Commands"
+    s.size.times do |cmdIdx|
+        puts "   CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
+    end
+end
+
 if getSpecVersion != $specVersion
     abort "Wrong spec version. Is #{getSpecVersion}, expected #{$specVersion}"
 end
 
-#$cfgHomeDir = getSpecBaseDir
-
 dumpSpec getSpecCommands if $debug
 
+#--- Shows app -----------------------------------------------------------------
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     @spec    = getSpecCommands  #$cfgSpec
     @homeDir = getSpecBaseDir   #$cfgHomeDir
