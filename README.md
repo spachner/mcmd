@@ -1,5 +1,5 @@
 # mcmd
-Repeat shell commands by mouse click (Mouse CoManD)
+Repeat shell commands by mouse click (Mouse CoMmanD)
 
 Are you often have to repeat shell commands? Are you tired by doing the same key strokes:
 
