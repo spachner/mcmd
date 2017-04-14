@@ -6,7 +6,7 @@ require 'yaml'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
 $specVersion   = 1      # Just in case the spec file format will change in future
-$debug         = false  # true for a little debug
+$debug         = false  # true for a litte debug
 $cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
 $cfgShowModify = false  # default state of option
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
@@ -69,6 +69,11 @@ else
     readSpec $specFileName
 end
 
+def updateSpecFileOnDisk
+    puts "updateSpecFileOnDisk #{$specFileName}" if $debug
+    writeSpec $specFileName, $cfgSpec
+end
+
 def getSpecVersion
     $cfgSpec[$specVersionKey]
 end
@@ -77,8 +82,38 @@ def getSpecBaseDir
     $cfgSpec[$specBaseDirKey]
 end
 
+def setSpecBaseDir b
+    puts "setSpecBaseDir #{b}" if $debug
+    if $cfgSpec[$specBaseDirKey] != b
+        $cfgSpec[$specBaseDirKey] = b
+        updateSpecFileOnDisk
+    end
+end
+
 def getSpecCommands
     $cfgSpec[$specCommandKey]
+end
+
+def getSpecCommandSet cmdIdx
+    $cfgSpec[$specCommandKey][cmdIdx]
+end
+
+def setSpecCommandButtonText cmdIdx, text
+    puts "setSpecCommandButtonText [#{cmdIdx}]=#{text}" if $debug
+    #$cfgSpec[$specCommandKey][cmdIdx][0] = text
+    if getSpecCommandSet(cmdIdx)[0] != text
+        getSpecCommandSet(cmdIdx)[0] = text
+        updateSpecFileOnDisk
+    end
+end
+
+def setSpecCommandText cmdIdx, text
+    puts "setSpecCommandText [#{cmdIdx}]=#{text}" if $debug
+    #$cfgSpec[$specCommandKey][cmdIdx][1] = text
+    if getSpecCommandSet(cmdIdx)[1] != text
+        getSpecCommandSet(cmdIdx)[1] = text
+        updateSpecFileOnDisk
+    end
 end
 
 def dumpSpec s
@@ -86,7 +121,7 @@ def dumpSpec s
     puts "BaseDir: #{getSpecBaseDir}"
     puts "Commands"
     s.size.times do |cmdIdx|
-        puts "   CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
+        # puts "CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
     end
 end
 
@@ -96,7 +131,7 @@ end
 
 dumpSpec getSpecCommands if $debug
 
-#--- Shows app -----------------------------------------------------------------
+#--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     @spec    = getSpecCommands  #$cfgSpec
     @homeDir = getSpecBaseDir   #$cfgHomeDir
@@ -114,7 +149,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
 
     lrStackMarginTop = 10
     tableHeight      = 30
-    lstackWidth      = 150
+    lstackWidth      = 250
     rstackWidth      = 350
     paraSize         = 9
     checkMarginTop   = 4
@@ -144,25 +179,30 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 #---------------------------------------------------------------
                 stack :height => tableHeight do
                     @hd = edit_line :width => rstackWidth do
-                        puts "New homeDir >#{@hd.text}<\n"
+                        puts "New homeDir >#{@hd.text}<\n" if $debug
                         @homeDir = @hd.text
                     end
                 end
                 @hd.text = @homeDir
                 @hd.finish = proc { |slf|
-                    puts "New homeDir >#{slf.text}<\n"
+                    puts "New homeDir >#{slf.text}<\n" if $debug
                     @homeDir = slf.text
+                    setSpecBaseDir @homeDir
                 }
                 #---------------------------------------------------------------
                 @cmd = Array.new
                 @spec.size.times do |cmdIdx|
                     stack :height => tableHeight do
                         @cmd[cmdIdx] = edit_line(:width => rstackWidth) do | edit |
-                            @spec[cmdIdx][1] = edit.text
-                            dumpSpec @spec if $debug
+                            @spec[cmdIdx][1] = edit.text if $debug
+                            #dumpSpec @spec if $debug
                         end
                         @cmd[cmdIdx].text = @spec[cmdIdx][1]
                     end
+                    @cmd[cmdIdx].finish = proc { |slf|
+                        puts "New cmd >#{slf.text}<\n" if $debug
+                        setSpecCommandText cmdIdx, slf.text
+                    }
                 end
                 #---------------------------------------------------------------
             end
@@ -251,8 +291,8 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     # Event handler ------------------------------------------------------------
     @spec.size.times do |cmdIdx|
         @button[cmdIdx].click do
-            appendLog "execute >#{@spec[cmdIdx][1]}<\n"
             clearLog
+            appendLog "execute >#{@spec[cmdIdx][1]}<\n"
             executable = getCmdExecutable cmdIdx
             if isCmdExecutable executable
                 exeCmd cmdIdx
