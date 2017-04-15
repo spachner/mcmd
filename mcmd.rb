@@ -6,7 +6,7 @@ require 'yaml'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
 $specVersion   = 1      # Just in case the spec file format will change in future
-$debug         = false  # true for a litte debug
+$debug         = true   # true for a litte debug
 $cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
 $cfgShowModify = false  # default state of option
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
@@ -90,30 +90,37 @@ def setSpecBaseDir b
     end
 end
 
-def getSpecCommands
+def getSpecCmds
     $cfgSpec[$specCommandKey]
 end
 
-def getSpecCommandSet cmdIdx
+def getSpecCmdByIdx cmdIdx
     $cfgSpec[$specCommandKey][cmdIdx]
 end
 
-def setSpecCommandButtonText cmdIdx, text
-    puts "setSpecCommandButtonText [#{cmdIdx}]=#{text}" if $debug
-    #$cfgSpec[$specCommandKey][cmdIdx][0] = text
-    if getSpecCommandSet(cmdIdx)[0] != text
-        getSpecCommandSet(cmdIdx)[0] = text
-        updateSpecFileOnDisk
-    end
+def getSpecButtonTextByIdx idx
+    getSpecCmdByIdx(idx)[0]
 end
 
-def setSpecCommandText cmdIdx, text
-    puts "setSpecCommandText [#{cmdIdx}]=#{text}" if $debug
-    #$cfgSpec[$specCommandKey][cmdIdx][1] = text
-    if getSpecCommandSet(cmdIdx)[1] != text
-        getSpecCommandSet(cmdIdx)[1] = text
-        updateSpecFileOnDisk
+def getSpecCmdTextByIdx idx
+    getSpecCmdByIdx(idx)[1]
+end
+
+def setSpecCmdButtonText cmdIdx, text, write
+    puts "setSpecCommamdButtonText [#{cmdIdx}]=#{text}" if $debug
+    if getSpecCmdByIdx(cmdIdx)[0] != text
+        getSpecCmdByIdx(cmdIdx)[0] = text
     end
+    updateSpecFileOnDisk if write
+end
+
+def setSpecCmdText cmdIdx, text, write
+    puts "setSpecCmdText [#{cmdIdx}]=#{text}" if $debug
+    if getSpecCmdByIdx(cmdIdx)[1] != text
+        puts "-------"
+        getSpecCmdByIdx(cmdIdx)[1] = text
+    end
+    updateSpecFileOnDisk if write
 end
 
 def dumpSpec s
@@ -121,7 +128,7 @@ def dumpSpec s
     puts "BaseDir: #{getSpecBaseDir}"
     puts "Commands"
     s.size.times do |cmdIdx|
-        # puts "CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
+        puts "CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
     end
 end
 
@@ -129,11 +136,10 @@ if getSpecVersion != $specVersion
     abort "Wrong spec version. Is #{getSpecVersion}, expected #{$specVersion}"
 end
 
-dumpSpec getSpecCommands if $debug
+dumpSpec getSpecCmds if $debug
 
 #--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
-    @spec    = getSpecCommands  #$cfgSpec
     @homeDir = getSpecBaseDir   #$cfgHomeDir
     @useLog  = $cfgUseLog
 
@@ -168,9 +174,9 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 end
                 #---------------------------------------------------------------
                 @button = Array.new
-                @spec.size.times do |cmdIdx|
+                getSpecCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @button[cmdIdx] = button @spec[cmdIdx][0], :width => lstackWidth
+                        @button[cmdIdx] = button getSpecCmdTextByIdx(cmdIdx), :width => lstackWidth
                     end
                 end
             end
@@ -191,17 +197,16 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 }
                 #---------------------------------------------------------------
                 @cmd = Array.new
-                @spec.size.times do |cmdIdx|
+                getSpecCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
                         @cmd[cmdIdx] = edit_line(:width => rstackWidth) do | edit |
-                            @spec[cmdIdx][1] = edit.text if $debug
-                            #dumpSpec @spec if $debug
+                            setSpecCmdText cmdIdx, edit.text, false
                         end
-                        @cmd[cmdIdx].text = @spec[cmdIdx][1]
+                        @cmd[cmdIdx].text = getSpecCmdTextByIdx cmdIdx
                     end
                     @cmd[cmdIdx].finish = proc { |slf|
                         puts "New cmd >#{slf.text}<\n" if $debug
-                        setSpecCommandText cmdIdx, slf.text
+                        setSpecCmdText cmdIdx, slf.text, true
                     }
                 end
                 #---------------------------------------------------------------
@@ -261,7 +266,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
         else
             @cmdActive = true
             t = Thread.new do
-                Open3.popen2e(@spec[cmdIdx][1], :chdir => @homeDir) do
+                Open3.popen2e(getSpecCmdTextByIdx(cmdIdx), :chdir => @homeDir) do
                     | stdin, stdout_and_stderr, wait_thr |
                     #stdin.close
                     prependStr = "pid #{wait_thr[:pid]}: "
@@ -277,7 +282,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     end
 
     def getCmdExecutable cmdIdx
-        exe = @spec[cmdIdx][1].split[0]   # make from e.g. "ls -1" -> "ls"
+        exe = getSpecCmdTextByIdx(cmdIdx).split[0]   # make from e.g. "ls -1" -> "ls"
         if exe.start_with?'./'
             exe = @homeDir + '/' + exe
         end
@@ -289,15 +294,15 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     end
 
     # Event handler ------------------------------------------------------------
-    @spec.size.times do |cmdIdx|
+    getSpecCmds.size.times do |cmdIdx|
         @button[cmdIdx].click do
             clearLog
-            appendLog "execute >#{@spec[cmdIdx][1]}<\n"
+            appendLog "execute >#{getSpecCmdTextByIdx(cmdIdx)}<\n"
             executable = getCmdExecutable cmdIdx
             if isCmdExecutable executable
                 exeCmd cmdIdx
             else
-                appendLog ">#{@spec[cmdIdx][1]}< -> >#{executable}< not executable"
+                appendLog ">#{getSpecCmdTextByIdx(cmdIdx)}< -> >#{executable}< not executable"
             end
         end
     end
