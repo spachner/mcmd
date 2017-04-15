@@ -82,12 +82,12 @@ def getSpecBaseDir
     $cfgSpec[$specBaseDirKey]
 end
 
-def setSpecBaseDir b
+def setSpecBaseDir b, write
     puts "setSpecBaseDir #{b}" if $debug
     if $cfgSpec[$specBaseDirKey] != b
         $cfgSpec[$specBaseDirKey] = b
-        updateSpecFileOnDisk
     end
+    updateSpecFileOnDisk if write
 end
 
 def getSpecCmds
@@ -132,6 +132,20 @@ def dumpSpec s
     end
 end
 
+def checkAndSetNewBaseDir dir
+    puts "checkAndSetNewBaseDir #{dir}" if $debug
+    @useNewDir = true
+    if !File.directory?(dir)
+        @useNewDir = confirm("Sorry, dir >#{dir}< does no exist. Use anyway?")
+    end
+    if @useNewDir
+        setSpecBaseDir dir, true
+    else
+        puts "reset base dir to #{getSpecBaseDir}" if $debug
+        @hd.text = getSpecBaseDir
+    end
+end
+
 if getSpecVersion != $specVersion
     abort "Wrong spec version. Is #{getSpecVersion}, expected #{$specVersion}"
 end
@@ -140,8 +154,7 @@ dumpSpec getSpecCmds if $debug
 
 #--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
-    @homeDir = getSpecBaseDir   #$cfgHomeDir
-    @useLog  = $cfgUseLog
+    @useLog  = $cfgUseLog   # init value, changed by checkbox click
 
     def clearLog
         @log.text = '' if @useLog
@@ -170,7 +183,9 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
             @lstack = stack :margin_top => lrStackMarginTop, :width => lstackWidth do
                 #---------------------------------------------------------------
                 stack :height => tableHeight do
-                    @sethd = button "Set home dir", :width => lstackWidth
+                    @sethd = button "Set home dir", :width => lstackWidth do
+                        checkAndSetNewBaseDir @hd.text
+                    end
                 end
                 #---------------------------------------------------------------
                 @button = Array.new
@@ -184,16 +199,12 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
             @rstack = stack :margin_top => lrStackMarginTop, :width => rstackWidth do
                 #---------------------------------------------------------------
                 stack :height => tableHeight do
-                    @hd = edit_line :width => rstackWidth do
-                        puts "New homeDir >#{@hd.text}<\n" if $debug
-                        @homeDir = @hd.text
-                    end
+                    @hd = edit_line :width => rstackWidth # noew base dir is stored by return or button click
                 end
-                @hd.text = @homeDir
+                @hd.text = getSpecBaseDir
                 @hd.finish = proc { |slf|
-                    puts "New homeDir >#{slf.text}<\n" if $debug
-                    @homeDir = slf.text
-                    setSpecBaseDir @homeDir
+                    puts "New base dir >#{slf.text}<\n" if $debug
+                    checkAndSetNewBaseDir slf.text
                 }
                 #---------------------------------------------------------------
                 @cmd = Array.new
@@ -251,7 +262,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
 
     def logOnOffCheckState
         if @logOnOff.checked?
-            @useLog = confirm("Sorry, Log widget is expermental. Expect freezing app on large output?")
+            @useLog = confirm("Sorry, Log widget is experimental. Expect freezing app on large output?")
             @logOnOff.checked = @useLog
             @log.show
         else
@@ -266,7 +277,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
         else
             @cmdActive = true
             t = Thread.new do
-                Open3.popen2e(getSpecCmdTextByIdx(cmdIdx), :chdir => @homeDir) do
+                Open3.popen2e(getSpecCmdTextByIdx(cmdIdx), :chdir => getSpecBaseDir) do
                     | stdin, stdout_and_stderr, wait_thr |
                     #stdin.close
                     prependStr = "pid #{wait_thr[:pid]}: "
@@ -284,7 +295,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     def getCmdExecutable cmdIdx
         exe = getSpecCmdTextByIdx(cmdIdx).split[0]   # make from e.g. "ls -1" -> "ls"
         if exe.start_with?'./'
-            exe = @homeDir + '/' + exe
+            exe = getSpecBaseDir + '/' + exe
         end
         exe
     end
