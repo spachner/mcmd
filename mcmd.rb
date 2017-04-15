@@ -1,11 +1,11 @@
 require 'open3'
 require 'yaml'
+require 'mcmdSpec'
 
 # Usage:
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
-$specVersion   = 1      # Just in case the spec file format will change in future
 $debug         = true   # true for a litte debug
 $cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
 $cfgShowModify = false  # default state of option
@@ -18,120 +18,25 @@ trap("SIGINT") {
     Shoes.quit
 }
 
-#--- spec file handling --------------------------------------------------------
-$specVersionKey = 'version'
-$specBaseDirKey = 'baseDir'
-$specCommandKey = 'commands'
-
-$exampleSpec = {
-    $specVersionKey => $specVersion,
-    $specBaseDirKey => Dir.pwd,
-    $specCommandKey => [
-        ['ls -1',           'ls -1'],                       # arguments (here '-1') as just added to command string
-        ['ls -l',           'ls -l'],
-        ['stdout err test', './testcmd.bash'],              # preceed command with './' when baseDir would be used,
-                                                            # otherwise PATH is used to locate command. testcmd.bash
-                                                            # outputs to strout and stderr which both are replied on
-                                                            # console where mcmd has been started from. And on log widget
-                                                            # when enabled
-        ['pwd',             'pwd'],
-        ['cat large',       'cat /var/log/monthly.out'],    # test which output a large file
-        ['edit mcmd.rb',    "atom #{Dir.pwd}/mcmd.rb"]
-    ]
-}
-
-def readSpec fileName
-    if !File.file? fileName
-        #puts "conf dir = >#{File.expand_path('./', fileName)}<" if $debug
-        abort "Cannot read file >#{fileName}<"
-    end
-    $cfgSpec = YAML.load_file fileName
-    puts "Reading spec from >#{fileName}<"
-end
-
-def writeSpec fileName, spec
-    File.open(fileName, 'w') { |f| f.write spec.to_yaml }
-    puts "Writing spec to >#{fileName}<"
-end
+$spec = Spec.new $debug
 
 if ARGV.size-1 < 1
     if !File.file? $specFileName
         puts "No arg given, creating default specFile >#{$specFileName}<"
-        writeSpec $specFileName, $exampleSpec
-        readSpec  $specFileName
+        $spec.createDefaultSpecFile $specFileName
     else
         puts "No arg given, reading default specFile >#{$specFileName}<"
-        readSpec  $specFileName
+        $spec.readSpec $specFileName
     end
 else
     $specFileName = ARGV[1]
     puts "Arg given, using spec file >#{$specFileName}<"
-    readSpec $specFileName
+    $spec.readSpec $specFileName
 end
 
-def updateSpecFileOnDisk
-    puts "updateSpecFileOnDisk #{$specFileName}" if $debug
-    writeSpec $specFileName, $cfgSpec
-end
+$spec.dumpSpec if $debug
 
-def getSpecVersion
-    $cfgSpec[$specVersionKey]
-end
-
-def getSpecBaseDir
-    $cfgSpec[$specBaseDirKey]
-end
-
-def setSpecBaseDir b, write
-    puts "setSpecBaseDir #{b}" if $debug
-    if $cfgSpec[$specBaseDirKey] != b
-        $cfgSpec[$specBaseDirKey] = b
-    end
-    updateSpecFileOnDisk if write
-end
-
-def getSpecCmds
-    $cfgSpec[$specCommandKey]
-end
-
-def getSpecCmdByIdx cmdIdx
-    $cfgSpec[$specCommandKey][cmdIdx]
-end
-
-def getSpecButtonTextByIdx idx
-    getSpecCmdByIdx(idx)[0]
-end
-
-def getSpecCmdTextByIdx idx
-    getSpecCmdByIdx(idx)[1]
-end
-
-def setSpecCmdButtonText cmdIdx, text, write
-    puts "setSpecCommamdButtonText [#{cmdIdx}]=#{text}" if $debug
-    if getSpecCmdByIdx(cmdIdx)[0] != text
-        getSpecCmdByIdx(cmdIdx)[0] = text
-    end
-    updateSpecFileOnDisk if write
-end
-
-def setSpecCmdText cmdIdx, text, write
-    puts "setSpecCmdText [#{cmdIdx}]=#{text}" if $debug
-    if getSpecCmdByIdx(cmdIdx)[1] != text
-        puts "-------"
-        getSpecCmdByIdx(cmdIdx)[1] = text
-    end
-    updateSpecFileOnDisk if write
-end
-
-def dumpSpec s
-    puts "Version: #{getSpecVersion}"
-    puts "BaseDir: #{getSpecBaseDir}"
-    puts "Commands"
-    s.size.times do |cmdIdx|
-        puts "CmdText >#{s[cmdIdx][0]}<,\tcmd >#{s[cmdIdx][1]}<"
-    end
-end
-
+# ------------------------------------------------------------------------------
 def checkAndSetNewBaseDir dir
     puts "checkAndSetNewBaseDir #{dir}" if $debug
     @useNewDir = true
@@ -139,18 +44,47 @@ def checkAndSetNewBaseDir dir
         @useNewDir = confirm("Sorry, dir >#{dir}< does no exist. Use anyway?")
     end
     if @useNewDir
-        setSpecBaseDir dir, true
+        $spec.setSpecBaseDir dir, true
     else
-        puts "reset base dir to #{getSpecBaseDir}" if $debug
-        @hd.text = getSpecBaseDir
+        puts "reset base dir to #{$spec.getSpecBaseDir}" if $debug
+        @hd.text = $spec.getSpecBaseDir
     end
 end
 
-if getSpecVersion != $specVersion
-    abort "Wrong spec version. Is #{getSpecVersion}, expected #{$specVersion}"
+def exeCmd cmdIdx
+    if @cmdActive
+        appendLog "Other cmd active, ignored"
+    else
+        puts "exeCmd >#{$spec.getSpecCmdTextByIdx(cmdIdx)}<" if $debug
+        @cmdActive = true
+        t = Thread.new do
+            Open3.popen2e($spec.getSpecCmdTextByIdx(cmdIdx), :chdir => $spec.getSpecBaseDir) do
+                | stdin, stdout_and_stderr, wait_thr |
+                #stdin.close
+                prependStr = "pid #{wait_thr[:pid]}: "
+                stdout_and_stderr.each do |line|
+                    appendLog prependStr + line
+                end
+            end
+            appendLog '********** Command finished ******'
+            @cmdActive = false
+        end
+        #t.join # wait for end of thread
+    end
 end
 
-dumpSpec getSpecCmds if $debug
+def getCmdExecutable cmdIdx
+    exe = $spec.getSpecCmdTextByIdx(cmdIdx).split[0]   # make from e.g. "ls -1" -> "ls"
+    if exe.start_with?'./'
+        exe = $spec.getSpecBaseDir + '/' + exe
+    end
+    puts "getCmdExecutable >#{$spec.getSpecCmdTextByIdx(cmdIdx)}< is >#{exe}<" if $debug
+    exe
+end
+
+def isCmdExecutable executable
+    system "which #{executable}"
+end
 
 #--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
@@ -189,9 +123,9 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 end
                 #---------------------------------------------------------------
                 @button = Array.new
-                getSpecCmds.size.times do |cmdIdx|
+                $spec.getSpecCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @button[cmdIdx] = button getSpecCmdTextByIdx(cmdIdx), :width => lstackWidth
+                        @button[cmdIdx] = button $spec.getSpecCmdTextByIdx(cmdIdx), :width => lstackWidth
                     end
                 end
             end
@@ -199,25 +133,25 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
             @rstack = stack :margin_top => lrStackMarginTop, :width => rstackWidth do
                 #---------------------------------------------------------------
                 stack :height => tableHeight do
-                    @hd = edit_line :width => rstackWidth # noew base dir is stored by return or button click
+                    @hd = edit_line :width => rstackWidth # new base dir is stored by return or button click
                 end
-                @hd.text = getSpecBaseDir
+                @hd.text = $spec.getSpecBaseDir
                 @hd.finish = proc { |slf|
                     puts "New base dir >#{slf.text}<\n" if $debug
                     checkAndSetNewBaseDir slf.text
                 }
                 #---------------------------------------------------------------
                 @cmd = Array.new
-                getSpecCmds.size.times do |cmdIdx|
+                $spec.getSpecCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
                         @cmd[cmdIdx] = edit_line(:width => rstackWidth) do | edit |
-                            setSpecCmdText cmdIdx, edit.text, false
+                            $spec.setSpecCmdText cmdIdx, edit.text, false
                         end
-                        @cmd[cmdIdx].text = getSpecCmdTextByIdx cmdIdx
+                        @cmd[cmdIdx].text = $spec.getSpecCmdTextByIdx cmdIdx
                     end
                     @cmd[cmdIdx].finish = proc { |slf|
                         puts "New cmd >#{slf.text}<\n" if $debug
-                        setSpecCmdText cmdIdx, slf.text, true
+                        $spec.setSpecCmdText cmdIdx, slf.text, true
                     }
                 end
                 #---------------------------------------------------------------
@@ -244,7 +178,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
             @logOnOff = check checked: $cfgUseLog, :margin_left => checkMarginLeft, :margin_top => checkMarginTop do
                 logOnOffCheckState
             end
-            para "Use Log", size: paraSize, :margin_top => paraMarginTop, :margin_left => paraMarginLeft, :margin_right => paraMarginRight
+            para "Log", size: paraSize, :margin_top => paraMarginTop, :margin_left => paraMarginLeft, :margin_right => paraMarginRight
         end
 
         #-----------------------------------------------------------------------
@@ -271,49 +205,16 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
         end
     end
 
-    def exeCmd cmdIdx
-        if @cmdActive
-            appendLog "Other cmd active, ignored"
-        else
-            @cmdActive = true
-            t = Thread.new do
-                Open3.popen2e(getSpecCmdTextByIdx(cmdIdx), :chdir => getSpecBaseDir) do
-                    | stdin, stdout_and_stderr, wait_thr |
-                    #stdin.close
-                    prependStr = "pid #{wait_thr[:pid]}: "
-                    stdout_and_stderr.each do |line|
-                        appendLog prependStr + line
-                    end
-                end
-                appendLog '********** Command finished ******'
-                @cmdActive = false
-            end
-            #t.join # wait for end of thread
-        end
-    end
-
-    def getCmdExecutable cmdIdx
-        exe = getSpecCmdTextByIdx(cmdIdx).split[0]   # make from e.g. "ls -1" -> "ls"
-        if exe.start_with?'./'
-            exe = getSpecBaseDir + '/' + exe
-        end
-        exe
-    end
-
-    def isCmdExecutable executable
-        system "which #{executable}"
-    end
-
     # Event handler ------------------------------------------------------------
-    getSpecCmds.size.times do |cmdIdx|
+    $spec.getSpecCmds.size.times do |cmdIdx|
         @button[cmdIdx].click do
             clearLog
-            appendLog "execute >#{getSpecCmdTextByIdx(cmdIdx)}<\n"
+            appendLog "execute >#{$spec.getSpecCmdTextByIdx(cmdIdx)}<\n"
             executable = getCmdExecutable cmdIdx
             if isCmdExecutable executable
                 exeCmd cmdIdx
             else
-                appendLog ">#{getSpecCmdTextByIdx(cmdIdx)}< -> >#{executable}< not executable"
+                appendLog ">#{$spec.getSpecCmdTextByIdx(cmdIdx)}< -> >#{executable}< not executable"
             end
         end
     end
