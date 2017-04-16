@@ -34,7 +34,7 @@ class Exe
     end
 
     def isCmdExecutable executable
-        system "which #{executable}"
+        system "which #{executable} >> /dev/null"
     end
 
     def setLogCB cb
@@ -42,7 +42,7 @@ class Exe
     end
 
     def logMessage str
-        @logCB.call "********** #{str} ******"
+        @logCB.call "********** #{str} ******\n"
     end
 
     def exeCmd cmd
