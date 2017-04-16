@@ -37,27 +37,49 @@ class Exe
         system "which #{executable}"
     end
 
-    def exeCmd cmd, logCB
+    def setLogCB cb
+        @logCB = cb
+    end
+
+    def logMessage str
+        @logCB.call "********** #{str} ******"
+    end
+
+    def exeCmd cmd
         if @cmdActive
-            logCB.call "Other cmd active, ignored"
+            @logCB.call "Other cmd active, ignored"
         else
             puts "exeCmd before var sub >#{cmd}<" if $debug
             cmd = $exe.substitute cmd, $spec.getCmds
             puts "exeCmd after  var sub >#{cmd}<" if $debug
             @cmdActive = true
-            t = Thread.new do
+            @thread = Thread.new do
                 Open3.popen2e(cmd, :chdir => $spec.getBaseDir) do
                     | stdin, stdout_and_stderr, wait_thr |
                     #stdin.close
                     prependStr = "pid #{wait_thr[:pid]}: "
                     stdout_and_stderr.each do |line|
-                        logCB.call prependStr + line
+                        @logCB.call prependStr + line
                     end
                 end
-                logCB.call '********** Command finished ******'
+                logMessage 'Command finished'
                 @cmdActive = false
+                @thread    = nil
             end
-            #t.join # wait for end of thread
+            # @thread.join # wait for end of thread
+        end
+    end
+
+    def kill
+        alive = @thread != nil && @thread.alive?
+        if alive
+            puts "Killing #{@thread}" if @debug
+            Thread.kill @thread
+            @thread    = nil
+            @cmdActive = false
+            logMessage 'Command killed'
+        else
+            logMessage 'No command active to kill'
         end
     end
 end

@@ -130,8 +130,9 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
 
         #-----------------------------------------------------------------------
         flow do
-            button("Quit")      { Shoes.quit }
-            button("Clear Log") { clearLog   }
+            button("Quit")          { Shoes.quit }
+            button("Kill Command")  { $exe.kill }
+            button("Clear Log")     { clearLog   }
             #button "Test" do
             #    puts '-------set @mainStack height'
             #    #Window.style(:width => 100)#:height => 100,
@@ -194,12 +195,14 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
 
             executable = $exe.getCmdExecutable cmd
             if $exe.isCmdExecutable executable
-                $exe.exeCmd cmd, lambda {|str| appendLog str}
+                $exe.exeCmd cmd
             else
                 appendLog ">#{cmdWithVars}< results in >#{cmd}< is not executable"
             end
         end
     end
+
+    $exe.setLogCB lambda {|str| appendLog str}
 
     # init ---------------------------------------------------------------------
     initThread = Thread.new do
