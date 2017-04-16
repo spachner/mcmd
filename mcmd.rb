@@ -7,7 +7,7 @@ require 'mcmdExe'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
-$debug         = true   # true for a litte debug
+$debug         = false   # true for a litte debug
 $cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
 $cfgShowModify = false  # default state of option
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
@@ -53,16 +53,12 @@ def checkAndSetNewBaseDir dir
     end
 end
 
-def getCmdExecutable cmdIdx
-    cmd = $spec.getSpecCmdTextByIdx(cmdIdx)
-    puts "getCmdExecutable before var sub >#{cmd}<" if $debug
-    cmd = $exe.substitute cmd, $spec.getSpecCmds
-    puts "getCmdExecutable after  var sub >#{cmd}<" if $debug
+def getCmdExecutable cmd
     exe = cmd.split[0]   # make from e.g. "ls -1" -> "ls"
     if exe.start_with?'./'
         exe = $spec.getSpecBaseDir + '/' + exe
     end
-    puts "getCmdExecutable >#{$spec.getSpecCmdTextByIdx(cmdIdx)}< is >#{exe}<" if $debug
+    puts "getCmdExecutable >#{cmd}< is >#{exe}<" if $debug
     exe
 end
 
@@ -70,11 +66,10 @@ def isCmdExecutable executable
     system "which #{executable}"
 end
 
-def exeCmd cmdIdx
+def exeCmd cmd
     if @cmdActive
         appendLog "Other cmd active, ignored"
     else
-        cmd = $spec.getSpecCmdTextByIdx(cmdIdx)
         puts "exeCmd before var sub >#{cmd}<" if $debug
         cmd = $exe.substitute cmd, $spec.getSpecCmds
         puts "exeCmd after  var sub >#{cmd}<" if $debug
@@ -107,6 +102,7 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
         puts str
         @log.append str    if @useLog
         @log.scroll_to_end if @useLog
+        @mainStack.refresh_slot if @logOnOff.checked? # force redraw slot, slows down execution but command output is seen immediately in log
     end
 
     lrStackMarginTop = 10
@@ -218,10 +214,22 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
     $spec.getSpecCmds.size.times do |cmdIdx|
         @button[cmdIdx].click do
             clearLog
-            appendLog "try to execute >#{$spec.getSpecCmdTextByIdx(cmdIdx)}<\n"
-            executable = getCmdExecutable cmdIdx
+
+            cmdWithVars = $spec.getSpecCmdTextByIdx(cmdIdx)
+            cmd = cmdWithVars
+            puts "before var sub >#{cmd}<" if $debug
+            cmd = $exe.substitute cmd, $spec.getSpecCmds
+            puts "after  var sub >#{cmd}<" if $debug
+
+            if cmdWithVars != cmd
+                appendLog "try to execute >#{cmdWithVars}< results in >#{cmd}<\n"
+            else
+                appendLog "try to execute >#{cmd}<\n"
+            end
+
+            executable = getCmdExecutable cmd
             if isCmdExecutable executable
-                exeCmd cmdIdx
+                exeCmd cmd
             else
                 appendLog ">#{$spec.getSpecCmdTextByIdx(cmdIdx)}< -> >#{executable}< not executable"
             end
