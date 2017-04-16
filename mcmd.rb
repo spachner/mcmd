@@ -7,7 +7,7 @@ require 'mcmdExe'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
-$debug         = false   # true for a litte debug
+$debug         = false  # true for a little debug
 $cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
 $cfgShowModify = false  # default state of option
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
@@ -36,7 +36,7 @@ else
     $spec.readSpec $specFileName
 end
 
-$spec.dumpSpec if $debug
+puts $spec if $debug
 
 # ------------------------------------------------------------------------------
 def checkAndSetNewBaseDir dir
@@ -50,43 +50,6 @@ def checkAndSetNewBaseDir dir
     else
         puts "reset base dir to #{$spec.getSpecBaseDir}" if $debug
         @hd.text = $spec.getSpecBaseDir
-    end
-end
-
-def getCmdExecutable cmd
-    exe = cmd.split[0]   # make from e.g. "ls -1" -> "ls"
-    if exe.start_with?'./'
-        exe = $spec.getSpecBaseDir + '/' + exe
-    end
-    puts "getCmdExecutable >#{cmd}< is >#{exe}<" if $debug
-    exe
-end
-
-def isCmdExecutable executable
-    system "which #{executable}"
-end
-
-def exeCmd cmd
-    if @cmdActive
-        appendLog "Other cmd active, ignored"
-    else
-        puts "exeCmd before var sub >#{cmd}<" if $debug
-        cmd = $exe.substitute cmd, $spec.getSpecCmds
-        puts "exeCmd after  var sub >#{cmd}<" if $debug
-        @cmdActive = true
-        t = Thread.new do
-            Open3.popen2e(cmd, :chdir => $spec.getSpecBaseDir) do
-                | stdin, stdout_and_stderr, wait_thr |
-                #stdin.close
-                prependStr = "pid #{wait_thr[:pid]}: "
-                stdout_and_stderr.each do |line|
-                    appendLog prependStr + line
-                end
-            end
-            appendLog '********** Command finished ******'
-            @cmdActive = false
-        end
-        #t.join # wait for end of thread
     end
 end
 
@@ -116,6 +79,8 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
     paraMarginLeft   = 0
     paraMarginRight  = 10
     logMarginLeft    = 6
+    logHeight        = 300
+    logWidth         = 600
 
     @mainStack = stack do
         flow do
@@ -187,7 +152,7 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
         end
 
         #-----------------------------------------------------------------------
-        @log = edit_box :margin_left => logMarginLeft, :width => 600, :height => 600, :resizable => true
+        @log = edit_box :margin_left => logMarginLeft, :width => logWidth, :height => logHeight, :resizable => true
         #-----------------------------------------------------------------------
     end # stack
 
@@ -227,11 +192,11 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
                 appendLog "try to execute >#{cmd}<\n"
             end
 
-            executable = getCmdExecutable cmd
-            if isCmdExecutable executable
-                exeCmd cmd
+            executable = $exe.getCmdExecutable cmd
+            if $exe.isCmdExecutable executable
+                $exe.exeCmd cmd, lambda {|str| appendLog str}
             else
-                appendLog ">#{$spec.getSpecCmdTextByIdx(cmdIdx)}< -> >#{executable}< not executable"
+                appendLog ">#{cmdWithVars}< results in >#{cmd}< is not executable"
             end
         end
     end

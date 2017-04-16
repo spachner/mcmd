@@ -24,6 +24,42 @@ class Exe
         _str
     end
 
+    def getCmdExecutable cmd
+        exe = cmd.split[0]   # make from e.g. "ls -1" -> "ls"
+        if exe.start_with?'./'
+            exe = $spec.getSpecBaseDir + '/' + exe
+        end
+        puts "getCmdExecutable >#{cmd}< is >#{exe}<" if $debug
+        exe
+    end
+
+    def isCmdExecutable executable
+        system "which #{executable}"
+    end
+
+    def exeCmd cmd, logCB
+        if @cmdActive
+            logCB.call "Other cmd active, ignored"
+        else
+            puts "exeCmd before var sub >#{cmd}<" if $debug
+            cmd = $exe.substitute cmd, $spec.getSpecCmds
+            puts "exeCmd after  var sub >#{cmd}<" if $debug
+            @cmdActive = true
+            t = Thread.new do
+                Open3.popen2e(cmd, :chdir => $spec.getSpecBaseDir) do
+                    | stdin, stdout_and_stderr, wait_thr |
+                    #stdin.close
+                    prependStr = "pid #{wait_thr[:pid]}: "
+                    stdout_and_stderr.each do |line|
+                        logCB.call prependStr + line
+                    end
+                end
+                logCB.call '********** Command finished ******'
+                @cmdActive = false
+            end
+            #t.join # wait for end of thread
+        end
+    end
 end
 
 class MyTest < Test::Unit::TestCase

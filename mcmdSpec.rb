@@ -115,7 +115,7 @@ class Spec
         updateSpecFileOnDisk if write
     end
 
-    def dumpSpec
+    def to_s
         puts "Version: #{getSpecVersion}"
         puts "BaseDir: #{getSpecBaseDir}"
         puts "Commands"
