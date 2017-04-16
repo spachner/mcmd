@@ -31,17 +31,17 @@ class Spec
         puts "Spec.initialize " if @debug
     end
 
-    def getSpecVersion
+    def getVersion
         @cfgSpec[$specVersionKey]
     end
 
     def abortOnWrongSpecFileVersion
-        if getSpecVersion != $specVersion
-            abort "Wrong specfile version. Is #{getSpecVersion}, expected #{$specVersion}"
+        if getVersion != $specVersion
+            abort "Wrong specfile version. Is #{getVersion}, expected #{$specVersion}"
         end
     end
 
-    def readSpec aFileName
+    def read aFileName
         puts "Spec.readSpec >#{aFileName}<" if @debug
         @filename = aFileName
         if !File.file? @filename
@@ -53,28 +53,28 @@ class Spec
         abortOnWrongSpecFileVersion
     end
 
-    def writeSpec fileName, spec
+    def write fileName, spec
         File.open(fileName, 'w') { |f| f.write spec.to_yaml }
         puts "Writing spec to >#{fileName}<" if @debug
     end
 
-    def createDefaultSpecFile filename
+    def createDefaultFile filename
         puts "Spec.createDefaultSpecFile >#{filename}<" if @debug
         @filename = filename
-        writeSpec @filename, $exampleSpec
-        readSpec  @filename
+        write @filename, $exampleSpec
+        read @filename
     end
 
     def updateSpecFileOnDisk
         puts "updateSpecFileOnDisk #{@filename}" if @debug
-        writeSpec @filename, @cfgSpec
+        write @filename, @cfgSpec
     end
 
-    def getSpecBaseDir
+    def getBaseDir
         @cfgSpec[$specBaseDirKey]
     end
 
-    def setSpecBaseDir dir, write
+    def setBaseDir dir, write
         puts "setSpecBaseDir #{dir}" if @debug
         if @cfgSpec[$specBaseDirKey] != dir
             @cfgSpec[$specBaseDirKey] = dir
@@ -82,45 +82,45 @@ class Spec
         updateSpecFileOnDisk if write
     end
 
-    def getSpecCmds
+    def getCmds
         @cfgSpec[$specCommandKey]
     end
 
-    def getSpecCmdByIdx cmdIdx
+    def getCmdByIdx cmdIdx
         @cfgSpec[$specCommandKey][cmdIdx]
     end
 
-    def getSpecButtonTextByIdx cmdIdx
-        getSpecCmdByIdx(cmdIdx)[0]
+    def getBtnTxtByIdx cmdIdx
+        getCmdByIdx(cmdIdx)[0]
     end
 
-    def getSpecCmdTextByIdx cmdIdx
-        getSpecCmdByIdx(cmdIdx)[1]
+    def getCmdTxtByIdx cmdIdx
+        getCmdByIdx(cmdIdx)[1]
     end
 
-    def setSpecCmdButtonText cmdIdx, text, write
+    def setCmdBtnTxt cmdIdx, text, write
         puts "setSpecCommamdButtonText [#{cmdIdx}]=#{text}" if @debug
-        if getSpecCmdByIdx(cmdIdx)[0] != text
-            getSpecCmdByIdx(cmdIdx)[0] = text
+        if getCmdByIdx(cmdIdx)[0] != text
+            getCmdByIdx(cmdIdx)[0] = text
         end
         updateSpecFileOnDisk if write
     end
 
-    def setSpecCmdText cmdIdx, text, write
+    def setCmdTxt cmdIdx, text, write
         puts "setSpecCmdText [#{cmdIdx}]=#{text}" if @debug
-        if getSpecCmdByIdx(cmdIdx)[1] != text
+        if getCmdByIdx(cmdIdx)[1] != text
             puts "-------"
-            getSpecCmdByIdx(cmdIdx)[1] = text
+            getCmdByIdx(cmdIdx)[1] = text
         end
         updateSpecFileOnDisk if write
     end
 
     def to_s
-        puts "Version: #{getSpecVersion}"
-        puts "BaseDir: #{getSpecBaseDir}"
+        puts "Version: #{getVersion}"
+        puts "BaseDir: #{getBaseDir}"
         puts "Commands"
-        getSpecCmds.size.times do |cmdIdx|
-            puts "\tButtonText >#{getSpecButtonTextByIdx(cmdIdx)}<,\tCmdText >#{getSpecCmdTextByIdx(cmdIdx)}<"
+        getCmds.size.times do |cmdIdx|
+            puts "\tButtonText >#{getBtnTxtByIdx(cmdIdx)}<,\tCmdText >#{getCmdTxtByIdx(cmdIdx)}<"
         end
     end
 end

@@ -25,15 +25,15 @@ $exe  = Exe.new  $debug
 if ARGV.size-1 < 1
     if !File.file? $specFileName
         puts "No arg given, creating default specFile >#{$specFileName}<"
-        $spec.createDefaultSpecFile $specFileName
+        $spec.createDefaultFile $specFileName
     else
         puts "No arg given, reading default specFile >#{$specFileName}<"
-        $spec.readSpec $specFileName
+        $spec.read $specFileName
     end
 else
     $specFileName = ARGV[1]
     puts "Arg given, using spec file >#{$specFileName}<"
-    $spec.readSpec $specFileName
+    $spec.read $specFileName
 end
 
 puts $spec if $debug
@@ -46,10 +46,10 @@ def checkAndSetNewBaseDir dir
         @useNewDir = confirm("Sorry, dir >#{dir}< does no exist. Use anyway?")
     end
     if @useNewDir
-        $spec.setSpecBaseDir dir, true
+        $spec.setBaseDir dir, true
     else
-        puts "reset base dir to #{$spec.getSpecBaseDir}" if $debug
-        @hd.text = $spec.getSpecBaseDir
+        puts "reset base dir to #{$spec.getBaseDir}" if $debug
+        @hd.text = $spec.getBaseDir
     end
 end
 
@@ -93,9 +93,9 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
                 end
                 #---------------------------------------------------------------
                 @button = Array.new
-                $spec.getSpecCmds.size.times do |cmdIdx|
+                $spec.getCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @button[cmdIdx] = button $spec.getSpecButtonTextByIdx(cmdIdx), :width => lstackWidth
+                        @button[cmdIdx] = button $spec.getBtnTxtByIdx(cmdIdx), :width => lstackWidth
                     end
                 end
             end
@@ -105,23 +105,23 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
                 stack :height => tableHeight do
                     @hd = edit_line :width => rstackWidth # new base dir is stored by return or button click
                 end
-                @hd.text = $spec.getSpecBaseDir
+                @hd.text = $spec.getBaseDir
                 @hd.finish = proc { |slf|
                     puts "New base dir >#{slf.text}<\n" if $debug
                     checkAndSetNewBaseDir slf.text
                 }
                 #---------------------------------------------------------------
                 @cmd = Array.new
-                $spec.getSpecCmds.size.times do |cmdIdx|
+                $spec.getCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
                         @cmd[cmdIdx] = edit_line(:width => rstackWidth) do | edit |
-                            $spec.setSpecCmdText cmdIdx, edit.text, false
+                            $spec.setCmdTxt cmdIdx, edit.text, false
                         end
-                        @cmd[cmdIdx].text = $spec.getSpecCmdTextByIdx cmdIdx
+                        @cmd[cmdIdx].text = $spec.getCmdTxtByIdx cmdIdx
                     end
                     @cmd[cmdIdx].finish = proc { |slf|
                         puts "New cmd >#{slf.text}<\n" if $debug
-                        $spec.setSpecCmdText cmdIdx, slf.text, true
+                        $spec.setCmdTxt cmdIdx, slf.text, true
                     }
                 end
                 #---------------------------------------------------------------
@@ -168,7 +168,7 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
         if @logOnOff.checked?
             @useLog = confirm("Sorry, Log widget is experimental. Expect freezing app on large output?")
             @logOnOff.checked = @useLog
-            @log.show
+            @log.show if @useLog
         else
             @useLog = false
             @log.hide
@@ -176,14 +176,14 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
     end
 
     # Event handler ------------------------------------------------------------
-    $spec.getSpecCmds.size.times do |cmdIdx|
+    $spec.getCmds.size.times do |cmdIdx|
         @button[cmdIdx].click do
             clearLog
 
-            cmdWithVars = $spec.getSpecCmdTextByIdx(cmdIdx)
+            cmdWithVars = $spec.getCmdTxtByIdx(cmdIdx)
             cmd = cmdWithVars
             puts "before var sub >#{cmd}<" if $debug
-            cmd = $exe.substitute cmd, $spec.getSpecCmds
+            cmd = $exe.substitute cmd, $spec.getCmds
             puts "after  var sub >#{cmd}<" if $debug
 
             if cmdWithVars != cmd

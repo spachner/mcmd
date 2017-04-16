@@ -27,7 +27,7 @@ class Exe
     def getCmdExecutable cmd
         exe = cmd.split[0]   # make from e.g. "ls -1" -> "ls"
         if exe.start_with?'./'
-            exe = $spec.getSpecBaseDir + '/' + exe
+            exe = $spec.getBaseDir + '/' + exe
         end
         puts "getCmdExecutable >#{cmd}< is >#{exe}<" if $debug
         exe
@@ -42,11 +42,11 @@ class Exe
             logCB.call "Other cmd active, ignored"
         else
             puts "exeCmd before var sub >#{cmd}<" if $debug
-            cmd = $exe.substitute cmd, $spec.getSpecCmds
+            cmd = $exe.substitute cmd, $spec.getCmds
             puts "exeCmd after  var sub >#{cmd}<" if $debug
             @cmdActive = true
             t = Thread.new do
-                Open3.popen2e(cmd, :chdir => $spec.getSpecBaseDir) do
+                Open3.popen2e(cmd, :chdir => $spec.getBaseDir) do
                     | stdin, stdout_and_stderr, wait_thr |
                     #stdin.close
                     prependStr = "pid #{wait_thr[:pid]}: "
