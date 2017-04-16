@@ -1,6 +1,7 @@
 require 'open3'
 require 'yaml'
 require 'mcmdSpec'
+require 'mcmdExe'
 
 # Usage:
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
@@ -19,6 +20,7 @@ trap("SIGINT") {
 }
 
 $spec = Spec.new $debug
+$exe  = Exe.new  $debug
 
 if ARGV.size-1 < 1
     if !File.file? $specFileName
@@ -51,14 +53,34 @@ def checkAndSetNewBaseDir dir
     end
 end
 
+def getCmdExecutable cmdIdx
+    cmd = $spec.getSpecCmdTextByIdx(cmdIdx)
+    puts "getCmdExecutable before var sub >#{cmd}<" if $debug
+    cmd = $exe.substitute cmd, $spec.getSpecCmds
+    puts "getCmdExecutable after  var sub >#{cmd}<" if $debug
+    exe = cmd.split[0]   # make from e.g. "ls -1" -> "ls"
+    if exe.start_with?'./'
+        exe = $spec.getSpecBaseDir + '/' + exe
+    end
+    puts "getCmdExecutable >#{$spec.getSpecCmdTextByIdx(cmdIdx)}< is >#{exe}<" if $debug
+    exe
+end
+
+def isCmdExecutable executable
+    system "which #{executable}"
+end
+
 def exeCmd cmdIdx
     if @cmdActive
         appendLog "Other cmd active, ignored"
     else
-        puts "exeCmd >#{$spec.getSpecCmdTextByIdx(cmdIdx)}<" if $debug
+        cmd = $spec.getSpecCmdTextByIdx(cmdIdx)
+        puts "exeCmd before var sub >#{cmd}<" if $debug
+        cmd = $exe.substitute cmd, $spec.getSpecCmds
+        puts "exeCmd after  var sub >#{cmd}<" if $debug
         @cmdActive = true
         t = Thread.new do
-            Open3.popen2e($spec.getSpecCmdTextByIdx(cmdIdx), :chdir => $spec.getSpecBaseDir) do
+            Open3.popen2e(cmd, :chdir => $spec.getSpecBaseDir) do
                 | stdin, stdout_and_stderr, wait_thr |
                 #stdin.close
                 prependStr = "pid #{wait_thr[:pid]}: "
@@ -73,21 +95,8 @@ def exeCmd cmdIdx
     end
 end
 
-def getCmdExecutable cmdIdx
-    exe = $spec.getSpecCmdTextByIdx(cmdIdx).split[0]   # make from e.g. "ls -1" -> "ls"
-    if exe.start_with?'./'
-        exe = $spec.getSpecBaseDir + '/' + exe
-    end
-    puts "getCmdExecutable >#{$spec.getSpecCmdTextByIdx(cmdIdx)}< is >#{exe}<" if $debug
-    exe
-end
-
-def isCmdExecutable executable
-    system "which #{executable}"
-end
-
 #--- Shoes main ----------------------------------------------------------------
-Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
+Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
     @useLog  = $cfgUseLog   # init value, changed by checkbox click
 
     def clearLog
@@ -125,7 +134,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
                 @button = Array.new
                 $spec.getSpecCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @button[cmdIdx] = button $spec.getSpecCmdTextByIdx(cmdIdx), :width => lstackWidth
+                        @button[cmdIdx] = button $spec.getSpecButtonTextByIdx(cmdIdx), :width => lstackWidth
                     end
                 end
             end
@@ -209,7 +218,7 @@ Shoes.app(title: "mcmd",  resizable: true) do #width: 1000, height: 500,
     $spec.getSpecCmds.size.times do |cmdIdx|
         @button[cmdIdx].click do
             clearLog
-            appendLog "execute >#{$spec.getSpecCmdTextByIdx(cmdIdx)}<\n"
+            appendLog "try to execute >#{$spec.getSpecCmdTextByIdx(cmdIdx)}<\n"
             executable = getCmdExecutable cmdIdx
             if isCmdExecutable executable
                 exeCmd cmdIdx

@@ -11,6 +11,7 @@ $exampleSpec = {
     $specCommandKey => [
         ['ls -1',           'ls -1'],                       # arguments (here '-1') as just added to command string
         ['ls -l',           'ls -l'],
+        ['ls var arg',      '$(lscmd) $(lsarg)'],
         ['stdout err test', './testcmd.bash'],              # preceed command with './' when baseDir would be used,
                                                             # otherwise PATH is used to locate command. testcmd.bash
                                                             # outputs to strout and stderr which both are replied on
@@ -18,7 +19,9 @@ $exampleSpec = {
                                                             # when enabled
         ['pwd',             'pwd'],
         ['cat large',       'cat /var/log/monthly.out'],    # test which output a large file
-        ['edit mcmd.rb',    "atom #{Dir.pwd}/mcmd.rb"]
+        ['edit mcmd.rb',    "atom #{Dir.pwd}/mcmd.rb"],
+        ['lscmd',           "ls"],
+        ['lsarg',           "-la"],
     ]
 }
 
