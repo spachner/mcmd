@@ -54,7 +54,7 @@ def checkAndSetNewBaseDir dir
 end
 
 #--- Shoes main ----------------------------------------------------------------
-Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
+Shoes.app(title: "mcmd", resizable: true, width: 300, height: 1000) do
     @useLog  = $cfgUseLog   # init value, changed by checkbox click
 
     def clearLog
@@ -203,6 +203,7 @@ Shoes.app(title: "mcmd", resizable: true, width: 700, height: 500) do
     end
 
     $exe.setLogCB lambda {|str| appendLog str}
+    $exe.setExeCB lambda {@lstack.background yellow}, lambda {@lstack.background green}, lambda {@lstack.background red}
 
     # init ---------------------------------------------------------------------
     initThread = Thread.new do

@@ -41,6 +41,12 @@ class Exe
         @logCB = cb
     end
 
+    def setExeCB cbRun, cbEndSuccess, cbEndError
+        @exeRunCB = cbRun
+        @exeSucCB = cbEndSuccess
+        @exeErrCB = cbEndError
+    end
+
     def logMessage str
         @logCB.call "********** #{str} ******\n"
     end
@@ -53,6 +59,7 @@ class Exe
             cmd = $exe.substitute cmd, $spec.getCmds
             puts "exeCmd after  var sub >#{cmd}<" if $debug
             @cmdActive = true
+            @exeRunCB.call
             @thread = Thread.new do
                 Open3.popen2e(cmd, :chdir => $spec.getBaseDir) do
                     | stdin, stdout_and_stderr, wait_thr |
@@ -61,8 +68,16 @@ class Exe
                     stdout_and_stderr.each do |line|
                         @logCB.call prependStr + line
                     end
+                    @exit_status = wait_thr.value.exitstatus
                 end
-                logMessage 'Command finished'
+                puts "success #{@exit_status}"
+                if @exit_status == 0
+                    logMessage 'Command finished with success'
+                    @exeSucCB.call
+                else
+                    logMessage "Command finished with error"
+                    @exeErrCB.call
+                end
                 @cmdActive = false
                 @thread    = nil
             end
@@ -77,6 +92,7 @@ class Exe
             Thread.kill @thread
             @thread    = nil
             @cmdActive = false
+            @exeErrCB.call
             logMessage 'Command killed'
         else
             logMessage 'No command active to kill'
