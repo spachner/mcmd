@@ -3,6 +3,8 @@ require 'yaml'
 require 'mcmdSpec'
 require 'mcmdExe'
 
+# Bugs
+
 # Usage:
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [/absolute/path/to/<my-conf-file>.yaml]
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
@@ -95,7 +97,10 @@ Shoes.app(title: "mcmd", resizable: true, width: 300, height: 1000) do
                 @button = Array.new
                 $spec.getCmds.size.times do |cmdIdx|
                     stack :height => tableHeight do
-                        @button[cmdIdx] = button $spec.getBtnTxtByIdx(cmdIdx), :width => lstackWidth
+
+                        buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
+
+                        @button[cmdIdx] = button buttonText, :width => lstackWidth
                     end
                 end
             end
@@ -198,12 +203,25 @@ Shoes.app(title: "mcmd", resizable: true, width: 300, height: 1000) do
                 $exe.exeCmd cmd
             else
                 appendLog ">#{cmdWithVars}< results in >#{cmd}< is not executable"
+                signalCmdEndError
             end
         end
     end
 
+    def signalCmdRun
+        @lstack.background yellow
+    end
+
+    def signalCmdEndSuccessful
+        @lstack.background green
+    end
+
+    def signalCmdEndError
+        @lstack.background red
+    end
+
     $exe.setLogCB lambda {|str| appendLog str}
-    $exe.setExeCB lambda {@lstack.background yellow}, lambda {@lstack.background green}, lambda {@lstack.background red}
+    $exe.setExeCB lambda {signalCmdRun}, lambda {signalCmdEndSuccessful}, lambda {signalCmdEndError}
 
     # init ---------------------------------------------------------------------
     initThread = Thread.new do
