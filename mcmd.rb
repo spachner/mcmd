@@ -83,6 +83,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     @paraMarginTop    = @tableHeight/2 - 7
     @paraMarginLeft   = 0
     @paraMarginRight  = 10
+    @logMarginTop     = 10
     @logMarginLeft    = 6
     @logHeight        = 300
     @logWidth         = $mainWidth
@@ -120,11 +121,9 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         f = flow do
             #@lstack = stack :margin_top => lrStackMarginTop, :width => lstackWidth do
             #---------------------------------------------------------------
-            #stack :height => tableHeight do
             @sethd = button "Set home dir", :width => @lstackWidth do
                 checkAndSetNewBaseDir @hd.text
             end
-            #end
             #---------------------------------------------------------------
             #stack :height => tableHeight do
             if withEditLines
@@ -191,7 +190,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         end
 
         #-----------------------------------------------------------------------
-        @log = edit_box :resizable => true, :margin_left => @logMarginLeft, :width => @logWidth, :height => @logHeight
+        @log = edit_box :resizable => true, :margin_top => @logMarginTop, :margin_left => 0.01, :margin_right => 0.01, :width => 1.0, :height => 0.5
         #-----------------------------------------------------------------------
     end
 
