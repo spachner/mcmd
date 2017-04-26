@@ -190,11 +190,12 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         end
 
         #-----------------------------------------------------------------------
-        @log = edit_box :resizable => true, :margin_top => @logMarginTop, :margin_left => 0.01, :margin_right => 0.01, :width => 1.0, :height => 0.5
+        @log = edit_box :resizable => true, :margin_top => @logMarginTop, :margin_left => 0.01, :margin_right => 0.01, :width => 1.0, :height => @logHeight
         #-----------------------------------------------------------------------
     end
 
     @mainStack = stack do
+        background rgb(100,100,100)..rgb(200,200,200)
         @flowCmd  = createFlowCmd true
         createFlowCtrl
     end # stack
@@ -225,15 +226,66 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def signalCmdRun
-        @flowCmd.background yellow
+        @r = 204
+        @g = 153
+        @b =  51
+        @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+        @dir = 1
+        @step = 0
+        @ani = animate 10 do |frame|
+            factor = 1
+            @step = 10#@step + 1
+            if @r == 0 || @g == 0 || @b == 0
+                @dir = @dir * -1
+            end
+
+            if @r == 255 || @g == 255 || @b == 255
+                @dir = @dir * -1
+            end
+
+            if @r <= 255
+                @r = @r+@dir*@step*factor
+            end
+            if @g <= 255
+                @g = @g+@dir*@step*factor
+            end
+            if @b <= 255
+                @b = @b+@dir*@step*factor
+            end
+
+            if @r < 0
+                @r = 0
+            end
+            if @g < 0
+                @g = 0
+            end
+            if @b < 0
+                @b = 0
+            end
+
+            if @r >= 255
+                @r = 255
+            end
+            if @g >= 255
+                @g = 255
+            end
+            if @b >= 255
+                @b = 255
+            end
+
+            puts "#{@dir}, #{@r}, #{@g}, #{@b}" if @debug
+            @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+        end
     end
 
     def signalCmdEndSuccessful
-        @flowCmd.background green
+        @ani.stop
+        @flowCmd.background green..lightgreen
     end
 
     def signalCmdEndError
-        @flowCmd.background red
+        @ani.stop
+        @flowCmd.background red..orange
     end
 
     $exe.setLogCB lambda {|str| appendLog str}
