@@ -169,7 +169,10 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         @flowControl = flow do
             button("Quit")          { Shoes.quit }
             button("Kill Command")  { $exe.kill }
-            button("Clear Log")     { clearLog   }
+            button("Clear Log")     {
+                clearLog
+                signalCmdIdle
+            }
             #button "Test" do
             #    puts '-------set @mainStack height'
             #    #Window.style(:width => 100)#:height => 100,
@@ -225,66 +228,73 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         end
     end
 
+    def signalCmdIdle
+        @flowCmd.background rgb(100,100,100)..rgb(200,200,200)
+    end
+
     def signalCmdRun
         @r = 204
         @g = 153
         @b =  51
         @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
-        @dir = 1
-        @step = 0
-        @ani = animate 10 do |frame|
-            factor = 1
-            @step = 10#@step + 1
-            if @r == 0 || @g == 0 || @b == 0
-                @dir = @dir * -1
-            end
 
-            if @r == 255 || @g == 255 || @b == 255
-                @dir = @dir * -1
-            end
+        if (false)
+            @dir = 1
+            @step = 0
+            @ani = animate 10 do |frame|
+                factor = 1
+                @step = 10#@step + 1
+                if @r == 0 || @g == 0 || @b == 0
+                    @dir = @dir * -1
+                end
 
-            if @r <= 255
-                @r = @r+@dir*@step*factor
-            end
-            if @g <= 255
-                @g = @g+@dir*@step*factor
-            end
-            if @b <= 255
-                @b = @b+@dir*@step*factor
-            end
+                if @r == 255 || @g == 255 || @b == 255
+                    @dir = @dir * -1
+                end
 
-            if @r < 0
-                @r = 0
-            end
-            if @g < 0
-                @g = 0
-            end
-            if @b < 0
-                @b = 0
-            end
+                if @r <= 255
+                    @r = @r+@dir*@step*factor
+                end
+                if @g <= 255
+                    @g = @g+@dir*@step*factor
+                end
+                if @b <= 255
+                    @b = @b+@dir*@step*factor
+                end
 
-            if @r >= 255
-                @r = 255
-            end
-            if @g >= 255
-                @g = 255
-            end
-            if @b >= 255
-                @b = 255
-            end
+                if @r < 0
+                    @r = 0
+                end
+                if @g < 0
+                    @g = 0
+                end
+                if @b < 0
+                    @b = 0
+                end
 
-            puts "#{@dir}, #{@r}, #{@g}, #{@b}" if @debug
-            @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+                if @r >= 255
+                    @r = 255
+                end
+                if @g >= 255
+                    @g = 255
+                end
+                if @b >= 255
+                    @b = 255
+                end
+
+                puts "#{@dir}, #{@r}, #{@g}, #{@b}" if @debug
+                @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+            end
         end
     end
 
     def signalCmdEndSuccessful
-        @ani.stop
+        #@ani.stop
         @flowCmd.background green..lightgreen
     end
 
     def signalCmdEndError
-        @ani.stop
+        #@ani.stop
         @flowCmd.background red..orange
     end
 
@@ -296,5 +306,6 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         sleep 0.5
         modifyCheckState
         logOnOffCheckState
+        signalCmdIdle
     end
 end
