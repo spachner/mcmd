@@ -2,6 +2,7 @@ require 'open3'
 require 'yaml'
 require 'mcmdSpec'
 require 'mcmdExe'
+require 'oscheck'
 
 # Bugs
 
@@ -55,8 +56,19 @@ def checkAndSetNewBaseDir dir
     end
 end
 
-$mainWidth  = 800
-$mainHeight = 500
+
+os = OSCheck.new $debug
+# Linux (Windows?) behaves different and window cannot be resized smaller than initial size, so start with a small window
+if os.isMacOS
+    $mainWidth  = 800
+    $mainHeight = 500
+elsif os.isWindows
+    $mainWidth  = 100
+    $mainHeight = 100
+elsif os.isLinux
+    $mainWidth  = 100
+    $mainHeight = 100
+end
 
 #--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight) do
