@@ -15,10 +15,12 @@ $cfgUseLog     = false  # default state of option. Experimental! Log widget will
 $cfgShowModify = false  # default state of option
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
 
+os = OSCheck.new $debug
+
 # this allows to stop mcmd by CTRL-C in shell where cshoes has been startet. Unfottunalely an additional
 # mouse click is needed, seems to be a bug in Shoes
 trap("SIGINT") {
-    puts "Exit pending. Please click into GUI window to finalize exit"
+    puts "Exit pending. Please click into GUI window to finalize exit" if os.isMacOS
     Shoes.quit
 }
 
@@ -56,8 +58,6 @@ def checkAndSetNewBaseDir dir
     end
 end
 
-
-os = OSCheck.new $debug
 # Linux (Windows?) behaves different and window cannot be resized smaller than initial size, so start with a small window
 if os.isMacOS
     $mainWidth  = 800
