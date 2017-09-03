@@ -109,7 +109,7 @@ class Spec
     def setCmdTxt cmdIdx, text, write
         puts "setSpecCmdText [#{cmdIdx}]=#{text}" if @debug
         if getCmdByIdx(cmdIdx)[1] != text
-            puts "-------"
+            puts "setCmdTxt executed -----------"
             getCmdByIdx(cmdIdx)[1] = text
         end
         updateSpecFileOnDisk if write

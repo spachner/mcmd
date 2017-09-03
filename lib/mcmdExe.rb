@@ -1,4 +1,4 @@
-require 'test/unit'
+#require 'test/unit' # throws /usr/local/Cellar/jruby/9.1.12.0/libexec/lib/ruby/stdlib/power_assert.rb:7: warning: tracing (e.g. set_trace_func) will not capture all events without --debug flag
 
 class Exe
     def initialize debug
@@ -60,7 +60,7 @@ class Exe
             puts "exeCmd after  var sub >#{cmd}<" if $debug
             @cmdActive = true
             @exeRunCB.call
-            @thread = Thread.new do
+            #@thread = Thread.new do
                 Open3.popen2e(cmd, :chdir => $spec.getBaseDir) do
                     | stdin, stdout_and_stderr, wait_thr |
                     #stdin.close
@@ -80,8 +80,8 @@ class Exe
                 end
                 @cmdActive = false
                 @thread    = nil
-            end
-            # @thread.join # wait for end of thread
+            #end
+            # ##@thread.join # wait for end of thread
         end
     end
 
@@ -100,7 +100,7 @@ class Exe
     end
 end
 
-class MyTest < Test::Unit::TestCase
+class MyTest #< Test::Unit::TestCase
     @@testDebug = true
     def test_1
         assert_equal(2, 2)

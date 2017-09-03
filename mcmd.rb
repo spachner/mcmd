@@ -1,8 +1,9 @@
+require 'shoes' # needed by shoes4 to be run by jruby
 require 'open3'
 require 'yaml'
-require 'mcmdSpec'
-require 'mcmdExe'
-require 'oscheck'
+require_relative 'lib/mcmdSpec'
+require_relative 'lib/mcmdExe'
+require_relative 'lib/oscheck'
 
 # Bugs
 
@@ -19,10 +20,10 @@ os = OSCheck.new $debug
 
 # this allows to stop mcmd by CTRL-C in shell where cshoes has been startet. Unfottunalely an additional
 # mouse click is needed, seems to be a bug in Shoes
-trap("SIGINT") {
-    puts "Exit pending. Please click into GUI window to finalize exit" if os.isMacOS
-    Shoes.quit
-}
+#trap("SIGINT") {
+#    puts "Exit pending. Please click into GUI window to finalize exit" if os.isMacOS
+#    Shoes.quit
+#}
 
 $spec = Spec.new $debug
 $exe  = Exe.new  $debug
@@ -41,7 +42,7 @@ else
     $spec.read $specFileName
 end
 
-puts $spec if $debug
+puts "Spec: #{$spec}" if $debug
 
 # ------------------------------------------------------------------------------
 def checkAndSetNewBaseDir dir
@@ -80,9 +81,9 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     def appendLog str
         puts str
-        @log.append str    if @useLog
-        @log.scroll_to_end if @useLog
-        @mainStack.refresh_slot if @logOnOff.checked? # force redraw slot, slows down execution but command output is seen immediately in log
+        @log.text = @log.text + str    if @useLog
+        #@log.scroll_to_end if @useLog
+        #@mainStack.refresh_slot if @logOnOff.checked? # force redraw slot, slows down execution but command output is seen immediately in log
     end
 
     @lrStackMarginTop = 10
@@ -136,16 +137,22 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
             @sethd = button "Set home dir", :width => @lstackWidth do
                 checkAndSetNewBaseDir @hd.text
             end
+
             #---------------------------------------------------------------
             #stack :height => tableHeight do
             if withEditLines
-                @hd = edit_line :width => @rstackWidth # new base dir is stored by return or button click
-                #end
-                @hd.text = $spec.getBaseDir
-                @hd.finish = proc { |slf|
-                    puts "New base dir >#{slf.text}<\n" if $debug
-                    checkAndSetNewBaseDir slf.text
-                }
+                @hd = edit_line $spec.getBaseDir, width: @rstackWidth do # new base dir is stored by return or button click
+                    puts "New base dir >#{@hd.text}<\n" if $debug
+                    checkAndSetNewBaseDir @hd.text
+                end
+                #@hd.text = $spec.getBaseDir
+
+                #@hd = edit_line :width => @rstackWidth # new base dir is stored by return or button click
+                #@hd.text = $spec.getBaseDir
+                #@hd.finish = proc { |slf|
+                #    puts "New base dir >#{slf.text}<\n" if $debug
+                #    checkAndSetNewBaseDir slf.text
+                #}
             end
 
             #---------------------------------------------------------------
@@ -155,23 +162,22 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 #stack :height => tableHeight do
 
                 buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
-
                 @button[cmdIdx] = button buttonText, :width => @lstackWidth
-                #end
 
                 if withEditLines
                     @cmd[cmdIdx] = edit_line(:width => @rstackWidth) do | edit |
-                        $spec.setCmdTxt cmdIdx, edit.text, false
+                        $spec.setCmdTxt cmdIdx, edit.text, true
                     end
                     @cmd[cmdIdx].text = $spec.getCmdTxtByIdx cmdIdx
-                    #end
-                    @cmd[cmdIdx].finish = proc { |slf|
-                        puts "New cmd >#{slf.text}<\n" if $debug
-                        $spec.setCmdTxt cmdIdx, slf.text, true
-                    }
+                    #@cmd[cmdIdx].finish = proc { |slf|
+                    #    puts "New cmd >#{slf.text}<\n" if $debug
+                    #    $spec.setCmdTxt cmdIdx, slf.text, true
+                    #}
                 end
             end
         end
+
+
         registerEventHandlers
         f
     end
@@ -179,8 +185,9 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     def createFlowCtrl
         #-----------------------------------------------------------------------
         @flowControl = flow do
-            button("Quit")          { Shoes.quit }
-            button("Kill Command")  { $exe.kill }
+#            button("Quit")          { Shoes.quit }
+            button("Quit")          { exit 0 }
+            #button("Kill Command")  { $exe.kill }
             button("Clear Log")     {
                 clearLog
                 signalCmdIdle
@@ -193,15 +200,26 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         end
 
         flow do
-            @modify = check checked: $cfgShowModify, :margin_left => @checkMarginLeft, :margin_top => @checkMarginTop do
+            #@modify = check checked: $cfgShowModify, :margin_left => @checkMarginLeft, :margin_top => @checkMarginTop do
+            #    modifyCheckState
+            #end
+            #para "Modify", size: @paraSize, :margin_top => @paraMarginTop, :margin_left => @paraMarginLeft, :margin_right => @paraMarginRight
+#
+            #@logOnOff = check checked: $cfgUseLog, :margin_left => @checkMarginLeft, :margin_top => @checkMarginTop do
+            #    logOnOffCheckState
+            #end
+            #para "Log", size: @paraSize, :margin_top => @paraMarginTop, :margin_left => @paraMarginLeft, :margin_right => @paraMarginRight
+
+            @modify = check checked: $cfgShowModify do
                 modifyCheckState
             end
-            para "Modify", size: @paraSize, :margin_top => @paraMarginTop, :margin_left => @paraMarginLeft, :margin_right => @paraMarginRight
+            para "Modify", size: @paraSize
 
-            @logOnOff = check checked: $cfgUseLog, :margin_left => @checkMarginLeft, :margin_top => @checkMarginTop do
+            @logOnOff = check checked: $cfgUseLog do
                 logOnOffCheckState
             end
-            para "Log", size: @paraSize, :margin_top => @paraMarginTop, :margin_left => @paraMarginLeft, :margin_right => @paraMarginRight
+            para "Log", size: @paraSize
+
         end
 
         #-----------------------------------------------------------------------
@@ -211,7 +229,8 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     @mainStack = stack do
         background rgb(100,100,100)..rgb(200,200,200)
-        @flowCmd  = createFlowCmd true
+        #@flowCmd  = createFlowCmd true
+        @flowCmd  = createFlowCmd false
         createFlowCtrl
     end # stack
 
@@ -231,9 +250,11 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     def logOnOffCheckState
         if @logOnOff.checked?
-            @useLog = confirm("Sorry, Log widget is experimental. Expect freezing app on large output?")
-            @logOnOff.checked = @useLog
-            @log.show if @useLog
+            #@useLog = confirm("Sorry, Log widget is experimental. Expect freezing app on large output?")
+            #@logOnOff.checked = @useLog
+            #@log.show if @useLog
+            @useLog = true
+            @log.show
         else
             @useLog = false
             @log.hide
@@ -241,14 +262,14 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def signalCmdIdle
-        @flowCmd.background rgb(100,100,100)..rgb(200,200,200)
+        #@flowCmd.background rgb(100,100,100)..rgb(200,200,200)
     end
 
     def signalCmdRun
         @r = 204
         @g = 153
         @b =  51
-        @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+        #@flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
 
         if (false)
             @dir = 1
@@ -295,29 +316,33 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 end
 
                 puts "#{@dir}, #{@r}, #{@g}, #{@b}" if @debug
-                @flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+                #@flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
             end
         end
     end
 
     def signalCmdEndSuccessful
         #@ani.stop
-        @flowCmd.background green..lightgreen
+        #@flowCmd.background green..lightgreen
     end
 
     def signalCmdEndError
         #@ani.stop
-        @flowCmd.background red..orange
+        #@flowCmd.background red..orange
     end
 
     $exe.setLogCB lambda {|str| appendLog str}
     $exe.setExeCB lambda {signalCmdRun}, lambda {signalCmdEndSuccessful}, lambda {signalCmdEndError}
 
+    #animate = animate 3 do
+    #    appendLog "1"
+    #end
+
     # init ---------------------------------------------------------------------
-    initThread = Thread.new do
-        sleep 0.5
-        modifyCheckState
-        logOnOffCheckState
-        signalCmdIdle
-    end
+    #initThread = Thread.new do
+    #    sleep 0.5
+    #    modifyCheckState
+    #    logOnOffCheckState
+    #    signalCmdIdle
+    #end
 end
