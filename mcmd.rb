@@ -28,7 +28,7 @@ os = OSCheck.new $debug
 $spec = Spec.new $debug
 $exe  = Exe.new  $debug
 
-if ARGV.size-1 < 1
+if ARGV.size < 1
     if !File.file? $specFileName
         puts "No arg given, creating default specFile >#{$specFileName}<"
         $spec.createDefaultFile $specFileName
@@ -37,7 +37,7 @@ if ARGV.size-1 < 1
         $spec.read $specFileName
     end
 else
-    $specFileName = ARGV[1]
+    $specFileName = ARGV[0]
     puts "Arg given, using spec file >#{$specFileName}<"
     $spec.read $specFileName
 end
