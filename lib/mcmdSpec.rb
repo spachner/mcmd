@@ -12,7 +12,8 @@ $exampleSpec = {
         ['ls -1',           'ls -1'],                       # arguments (here '-1') as just added to command string
         ['ls -l',           'ls -l'],
         ['ls var arg',      '$(lscmd) $(lsarg)'],
-        ['stdout err test', './testcmd.bash'],              # preceed command with './' when baseDir would be used,
+        ['stdout err test succ', './test/testcmd.bash 0'],  
+        ['stdout err test fail', './test/testcmd.bash 1'],  # preceed command with './' when baseDir would be used,
                                                             # otherwise PATH is used to locate command. testcmd.bash
                                                             # outputs to strout and stderr which both are replied on
                                                             # console where mcmd has been started from. And on log widget

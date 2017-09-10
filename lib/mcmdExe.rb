@@ -37,50 +37,73 @@ class Exe
         system "which #{executable} >> /dev/null"
     end
 
-    def setLogCB cb
-        @logCB = cb
+    def setLogQueue q
+        @logQueue = q
     end
 
-    def setExeCB cbRun, cbEndSuccess, cbEndError
-        @exeRunCB = cbRun
-        @exeSucCB = cbEndSuccess
-        @exeErrCB = cbEndError
+    def setExeStatusQueue q
+        @exeStatusQueue = q
     end
+
+    def addLogQueue str
+        @logQueue << str if @logQueue
+    end
+
+    def addExeStatusQueue s
+        @exeStatusQueue << s
+    end
+
+    #def setExeCB cbRun #, cbEndSuccess, cbEndError
+    #    @exeRunCB = cbRun
+    #    #@exeSucCB = cbEndSuccess
+    #    #@exeErrCB = cbEndError
+    #end
 
     def logMessage str
-        @logCB.call "********** #{str} ******\n"
+        #puts ">addLogQueue push #{str}<"
+        addLogQueue "********** #{str} ******\n"
+    end
+
+    def logExeOutput str
+        #puts ">push #{str}<"
+        addLogQueue str
     end
 
     def exeCmd cmd
         if @cmdActive
-            @logCB.call "Other cmd active, ignored"
+            addLogQueue "Other cmd active, ignored"
         else
             puts "exeCmd before var sub >#{cmd}<" if $debug
             cmd = $exe.substitute cmd, $spec.getCmds
             puts "exeCmd after  var sub >#{cmd}<" if $debug
             @cmdActive = true
-            @exeRunCB.call
-            #@thread = Thread.new do
+            @exit_status = -1
+            #@exeRunCB.call
+            addExeStatusQueue 'started'
+            @thread = Thread.new do
                 Open3.popen2e(cmd, :chdir => $spec.getBaseDir) do
                     | stdin, stdout_and_stderr, wait_thr |
                     #stdin.close
                     prependStr = "pid #{wait_thr[:pid]}: "
                     stdout_and_stderr.each do |line|
-                        @logCB.call prependStr + line
+                        logExeOutput prependStr + line
+
+                        #sleep(0.1)
+
                     end
                     @exit_status = wait_thr.value.exitstatus
                 end
-                puts "success #{@exit_status}"
+                puts "exitcode #{@exit_status}" if $debug
                 if @exit_status == 0
-                    logMessage 'Command finished with success'
-                    @exeSucCB.call
+                    logMessage "Command finished with success (code #{@exit_status})"
                 else
-                    logMessage "Command finished with error"
-                    @exeErrCB.call
+                    logMessage "Command finished with error (code #{@exit_status})"
                 end
+                addExeStatusQueue @exit_status
                 @cmdActive = false
                 @thread    = nil
-            #end
+            end
+
             # ##@thread.join # wait for end of thread
         end
     end
@@ -92,7 +115,8 @@ class Exe
             Thread.kill @thread
             @thread    = nil
             @cmdActive = false
-            @exeErrCB.call
+            #@exeErrCB.call
+            addExeStatusQueue 'killed'
             logMessage 'Command killed'
         else
             logMessage 'No command active to kill'

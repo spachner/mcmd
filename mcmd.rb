@@ -1,3 +1,5 @@
+# MacOS: start with 'jruby -J-XstartOnFirstThread mcmd.rb'
+
 require 'shoes' # needed by shoes4 to be run by jruby
 require 'open3'
 require 'yaml'
@@ -12,9 +14,10 @@ require_relative 'lib/oscheck'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
 $debug         = false  # true for a little debug
-$cfgUseLog     = false  # default state of option. Experimental! Log widget will hang app sometimes
+$cfgUseLog     = true   # default state of option
 $cfgShowModify = false  # default state of option
-$specFileName  = File.expand_path('./', 'mcmd-conf.yaml') # default spec file name, may be overritten by command line argument
+# default spec file name, may be overritten by command line argument
+$specFileName  = File.expand_path('./', 'mcmd-conf.yaml') 
 
 os = OSCheck.new $debug
 
@@ -83,7 +86,8 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         puts str
         @log.text = @log.text + str    if @useLog
         #@log.scroll_to_end if @useLog
-        #@mainStack.refresh_slot if @logOnOff.checked? # force redraw slot, slows down execution but command output is seen immediately in log
+        # force redraw slot, slows down execution but command output is seen immediately in log
+        #@mainStack.refresh_slot if @logOnOff.checked? 
     end
 
     @lrStackMarginTop = 10
@@ -100,6 +104,65 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     @logMarginLeft    = 6
     @logHeight        = 300
     @logWidth         = $mainWidth
+    @workersHandleRatePerSec = 3
+
+    @logQueueWorker = animate @workersHandleRatePerSec do
+        puts "logQueueWorker" if $debug
+        #appendLog "logQueue queue.length #{@logQueue.length}\n" if @logQueue.length > 0
+
+        i = 0
+        while @logQueue.length > 0 do
+            i = i + 1
+            s = @logQueue.pop(true)
+            puts "logQueue pop #{i} >#{s}<" if $debug
+            appendLog s
+        end
+    end
+
+    @exeStatusQueue = Queue.new
+    $exe.setExeStatusQueue @exeStatusQueue
+
+    @exeStatusQueueWorker = animate @workersHandleRatePerSec do
+        puts "exeStatusQueueWorker" if $debug
+        #appendLog "exeStatusQueue queue.length #{@exeStatusQueue.length}\n" if @exeStatusQueue.length > 0
+
+        j = 0
+        while @exeStatusQueue.length > 0 do
+            j = j + 1
+            s = @exeStatusQueue.pop(true)
+            puts "exeStatusQueue: pop #{j} >#{s}<" if $debug
+            #appendLog "exeStatusQueue exit status #{s}"
+            if s.is_a? Integer 
+                if s == 0
+                    signalCmdEndSuccessful
+                else
+                    signalCmdEndError
+                end
+                stopWorkers
+            elsif s == 'started'
+                signalCmdRun
+            elsif s == 'killed'
+                signalCmdEndError
+                stopWorkers
+            else
+                puts "***exeStatusQueue: Unknown code >#{s}<"
+                stopWorkers
+            end
+        end
+    end
+
+    def startWorkers
+        puts "startWorkers--------------" if $debug
+        @logQueueWorker.start
+        @exeStatusQueueWorker.start
+    end
+
+    def stopWorkers
+        sleep 2*1/(@workersHandleRatePerSec) # make sure queued event gets handled 
+        puts "stopWorkers----------------" if $debug
+        @logQueueWorker.stop
+        @exeStatusQueueWorker.stop
+    end
 
     def registerEventHandlers
         # Event handler ------------------------------------------------------------
@@ -121,6 +184,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
                 executable = $exe.getCmdExecutable cmd
                 if $exe.isCmdExecutable executable
+                    startWorkers
                     $exe.exeCmd cmd
                 else
                     appendLog ">#{cmdWithVars}< results in >#{cmd}< is not executable"
@@ -141,7 +205,8 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
             #---------------------------------------------------------------
             #stack :height => tableHeight do
             if withEditLines
-                @hd = edit_line $spec.getBaseDir, width: @rstackWidth do # new base dir is stored by return or button click
+                # new base dir is stored by return or button click
+                @hd = edit_line $spec.getBaseDir, width: @rstackWidth do
                     puts "New base dir >#{@hd.text}<\n" if $debug
                     checkAndSetNewBaseDir @hd.text
                 end
@@ -187,7 +252,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         @flowControl = flow do
 #            button("Quit")          { Shoes.quit }
             button("Quit")          { exit 0 }
-            #button("Kill Command")  { $exe.kill }
+            button("Kill Command")  { $exe.kill }
             button("Clear Log")     {
                 clearLog
                 signalCmdIdle
@@ -228,7 +293,9 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     @mainStack = stack do
-        background rgb(100,100,100)..rgb(200,200,200)
+        @mainBack = background rgb(100,100,100)..rgb(200,200,200)
+        #     @back  = background green
+
         #@flowCmd  = createFlowCmd true
         @flowCmd  = createFlowCmd false
         createFlowCtrl
@@ -262,14 +329,14 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def signalCmdIdle
-        #@flowCmd.background rgb(100,100,100)..rgb(200,200,200)
+        background rgb(100,100,100)..rgb(200,200,200)
     end
 
     def signalCmdRun
         @r = 204
         @g = 153
         @b =  51
-        #@flowCmd.background rgb(204,153,51)..rgb(@r,@g,@b)
+        background rgb(204,153,51)..rgb(@r,@g,@b)
 
         if (false)
             @dir = 1
@@ -323,20 +390,22 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     def signalCmdEndSuccessful
         #@ani.stop
-        #@flowCmd.background green..lightgreen
+        @mainBack = background green..lightgreen
     end
 
     def signalCmdEndError
         #@ani.stop
-        #@flowCmd.background red..orange
+        @mainBack = background red..orange
     end
 
-    $exe.setLogCB lambda {|str| appendLog str}
-    $exe.setExeCB lambda {signalCmdRun}, lambda {signalCmdEndSuccessful}, lambda {signalCmdEndError}
+    #$exe.setLogCB lambda {|str| appendLog str}
+    @logQueue = Queue.new
+    $exe.setLogQueue @logQueue
+    #$exe.setExeCB lambda {signalCmdRun}, lambda {signalCmdEndSuccessful}, lambda {signalCmdEndError}
+    #$exe.setExeCB lambda {signalCmdRun}
 
-    #animate = animate 3 do
-    #    appendLog "1"
-    #end
+
+    stopWorkers
 
     # init ---------------------------------------------------------------------
     #initThread = Thread.new do
