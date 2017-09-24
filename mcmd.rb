@@ -17,7 +17,7 @@ $debug         = false  # true for a little debug
 $cfgUseLog     = true   # default state of option
 $cfgShowModify = false  # default state of option
 # default spec file name, may be overritten by command line argument
-$specFileName  = File.expand_path('./', 'mcmd-conf.yaml') 
+$specFileName  = File.expand_path('./', 'mcmd-conf.yaml')
 
 os = OSCheck.new $debug
 
@@ -30,6 +30,7 @@ os = OSCheck.new $debug
 
 $spec = Spec.new $debug
 $exe  = Exe.new  $debug
+#COLORS = Shoes::COLORS
 
 if ARGV.size < 1
     if !File.file? $specFileName
@@ -87,7 +88,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         @log.text = @log.text + str    if @useLog
         #@log.scroll_to_end if @useLog
         # force redraw slot, slows down execution but command output is seen immediately in log
-        #@mainStack.refresh_slot if @logOnOff.checked? 
+        #@mainStack.refresh_slot if @logOnOff.checked?
     end
 
     @lrStackMarginTop = 10
@@ -132,7 +133,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
             s = @exeStatusQueue.pop(true)
             puts "exeStatusQueue: pop #{j} >#{s}<" if $debug
             #appendLog "exeStatusQueue exit status #{s}"
-            if s.is_a? Integer 
+            if s.is_a? Integer
                 if s == 0
                     signalCmdEndSuccessful
                 else
@@ -158,7 +159,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def stopWorkers
-        sleep 2*1/(@workersHandleRatePerSec) # make sure queued event gets handled 
+        sleep 2*1/(@workersHandleRatePerSec) # make sure queued event gets handled
         puts "stopWorkers----------------" if $debug
         @logQueueWorker.stop
         @exeStatusQueueWorker.stop
@@ -196,52 +197,65 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     def createFlowCmd withEditLines
         f = flow do
-            #@lstack = stack :margin_top => lrStackMarginTop, :width => lstackWidth do
-            #---------------------------------------------------------------
-            @sethd = button "Set home dir", :width => @lstackWidth do
-                checkAndSetNewBaseDir @hd.text
-            end
-
-            #---------------------------------------------------------------
-            #stack :height => tableHeight do
-            if withEditLines
-                # new base dir is stored by return or button click
-                @hd = edit_line $spec.getBaseDir, width: @rstackWidth do
-                    puts "New base dir >#{@hd.text}<\n" if $debug
-                    checkAndSetNewBaseDir @hd.text
-                end
-                #@hd.text = $spec.getBaseDir
-
-                #@hd = edit_line :width => @rstackWidth # new base dir is stored by return or button click
-                #@hd.text = $spec.getBaseDir
-                #@hd.finish = proc { |slf|
-                #    puts "New base dir >#{slf.text}<\n" if $debug
-                #    checkAndSetNewBaseDir slf.text
-                #}
-            end
-
+            #stack width: @lstackWidth, margin: 0 do
+            #    #background send(COLORS.keys[rand(COLORS.keys.size)])
+            #    #@lstack = stack :margin_top => lrStackMarginTop, :width => lstackWidth do
+            #    #---------------------------------------------------------------
+            #    @sethd = button "Set home dir" do #, :width => @lstackWidth do
+            #        #checkAndSetNewBaseDir @hd.text
+            #    end
+#
+            #    #---------------------------------------------------------------
+            #    #stack :height => tableHeight do
+            #    if withEditLines
+            #        # new base dir is stored by return or button click
+            #        #@hd = edit_line $spec.getBaseDir, width: @rstackWidth do
+            #        @hd = edit_line $spec.getBaseDir do
+            #            puts "New base dir >#{@hd.text}<\n" if $debug
+            #            checkAndSetNewBaseDir @hd.text
+            #        end
+            #        #@hd.text = $spec.getBaseDir
+#
+            #        #@hd = edit_line :width => @rstackWidth # new base dir is stored by return or button click
+            #        #@hd.text = $spec.getBaseDir
+            #        #@hd.finish = proc { |slf|
+            #        #    puts "New base dir >#{slf.text}<\n" if $debug
+            #        #    checkAndSetNewBaseDir slf.text
+            #        #}
+            #    end
+            #end
             #---------------------------------------------------------------
             @button = Array.new
             @cmd    = Array.new
+            @color  = Array.new
             $spec.getCmds.size.times do |cmdIdx|
                 #stack :height => tableHeight do
+                stack width: @lstackWidth, margin: 0 do
+                    #background send(COLORS.keys[rand(COLORS.keys.size)])
+                    background $spec.getColorResolvedByIdx(cmdIdx)
+                    buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
+                    @button[cmdIdx] = button buttonText #, :width => @lstackWidth
 
-                buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
-                @button[cmdIdx] = button buttonText, :width => @lstackWidth
-
-                if withEditLines
-                    @cmd[cmdIdx] = edit_line(:width => @rstackWidth) do | edit |
-                        $spec.setCmdTxt cmdIdx, edit.text, true
+                    if withEditLines
+                        flow do
+                            #@cmd[cmdIdx] = edit_line(:width => @rstackWidth) do | edit |
+                            @cmd[cmdIdx] = edit_line do | edit |
+                                $spec.setCmdTxt cmdIdx, edit.text, true
+                            end
+                            @cmd[cmdIdx].text = $spec.getCmdTxtByIdx cmdIdx
+                            #@cmd[cmdIdx].finish = proc { |slf|
+                            #    puts "New cmd >#{slf.text}<\n" if $debug
+                            #    $spec.setCmdTxt cmdIdx, slf.text, true
+                            #}
+                            @color[cmdIdx] = edit_line do | edit |
+                                $spec.setColor cmdIdx, edit.text, true
+                            end
+                            @color[cmdIdx].text = $spec.getColorByIdx cmdIdx
+                        end
                     end
-                    @cmd[cmdIdx].text = $spec.getCmdTxtByIdx cmdIdx
-                    #@cmd[cmdIdx].finish = proc { |slf|
-                    #    puts "New cmd >#{slf.text}<\n" if $debug
-                    #    $spec.setCmdTxt cmdIdx, slf.text, true
-                    #}
                 end
             end
         end
-
 
         registerEventHandlers
         f
@@ -293,7 +307,8 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     @mainStack = stack do
-        @mainBack = background rgb(100,100,100)..rgb(200,200,200)
+        fill system_background
+        #@mainBack = background rgb(100,100,100)..rgb(200,200,200)
         #     @back  = background green
 
         #@flowCmd  = createFlowCmd true
@@ -329,14 +344,14 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def signalCmdIdle
-        background rgb(100,100,100)..rgb(200,200,200)
+        #background rgb(100,100,100)..rgb(200,200,200)
     end
 
     def signalCmdRun
         @r = 204
         @g = 153
         @b =  51
-        background rgb(204,153,51)..rgb(@r,@g,@b)
+        #background rgb(204,153,51)..rgb(@r,@g,@b)
 
         if (false)
             @dir = 1
@@ -390,12 +405,12 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     def signalCmdEndSuccessful
         #@ani.stop
-        @mainBack = background green..lightgreen
+        #@mainBack = background green..lightgreen
     end
 
     def signalCmdEndError
         #@ani.stop
-        @mainBack = background red..orange
+        #@mainBack = background red..orange
     end
 
     #$exe.setLogCB lambda {|str| appendLog str}
