@@ -93,7 +93,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
 
     @lrStackMarginTop = 10
     @tableHeight      = 30
-    @lstackWidth      = 250
+    @lstackWidth      = $spec.getButtonWidth
     @rstackWidth      = 350
     @paraSize         = 9
     @checkMarginTop   = 4
@@ -103,7 +103,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     @paraMarginRight  = 10
     @logMarginTop     = 10
     @logMarginLeft    = 6
-    @logHeight        = 300
+    @logHeight        = 100
     @logWidth         = $mainWidth
     @workersHandleRatePerSec = 3
 
@@ -302,7 +302,13 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         end
 
         #-----------------------------------------------------------------------
-        @log = edit_box :resizable => true, :margin_top => @logMarginTop, :margin_left => 0.01, :margin_right => 0.01, :width => 1.0, :height => @logHeight
+        @log = edit_box \
+            :resizable    => true,
+            :margin_top   => @logMarginTop,
+            :margin_left  => 0.01,
+            :margin_right => 0.01,
+            :width        => 1.0,
+            :height       => @logHeight
         #-----------------------------------------------------------------------
     end
 

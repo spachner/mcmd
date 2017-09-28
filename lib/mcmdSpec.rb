@@ -1,17 +1,18 @@
 #--- mcmd spec file handling
 
-$specVersion    = 2      # 1: initial, 2: with color
-$specVersionKey = 'version'
-$specBaseDirKey = 'baseDir'
-$specColors     = 'colors'
-$specCommandKey = 'commands'
+$specVersion     = 2      # 1: initial, 2: with color
+$specVersionKey  = 'version'
+$specButtonWidth = 'buttonWidth'
+$specBaseDirKey  = 'baseDir'
+$specColors      = 'colors'
+$specCommandKey  = 'commands'
 
 $exampleSpec = {
-    $specVersionKey => $specVersion,
-    $specBaseDirKey => Dir.pwd,
-#    $specColors     => ['seagreen', 'salmon', 'papayawhip', 'goldenrod'],  # see Shoes::COLORS
-    $specColors     => ['#00FFFF', '#0000FF', '#FF8000', '#FFFF00'],  # see Shoes::COLORS
-    $specCommandKey => [
+    $specVersionKey  => $specVersion,
+    $specButtonWidth => 250,
+    $specBaseDirKey  => Dir.pwd,
+    $specColors      => ['#00FFFF', '#0000FF', '#FF8000', '#FFFF00'],  # see Shoes::COLORS
+    $specCommandKey  => [
         ['ls -1',                'ls -1', 0],                      # arguments (here '-1') as just added to command string
         ['ls -l',                'ls -l', 1],
         ['ls var arg',           '$(lscmd) $(lsarg)', 2],
@@ -37,6 +38,10 @@ class Spec
 
     def getVersion
         @cfgSpec[$specVersionKey]
+    end
+
+    def getButtonWidth
+        @cfgSpec[$specButtonWidth]
     end
 
     def abortOnWrongSpecFileVersion
