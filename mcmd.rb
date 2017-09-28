@@ -235,6 +235,11 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                     background $spec.getColorResolvedByIdx(cmdIdx)
                     buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
                     @button[cmdIdx] = button buttonText #, :width => @lstackWidth
+                    hover do
+                        cmdText = $exe.substitute $spec.getCmdTxtByIdx(cmdIdx), $spec.getCmds
+                        puts "hover, #{buttonText}, #{cmdText}" if $debug
+                        @cmdText.text = "#{buttonText}: #{cmdText}"
+                    end
 
                     if withEditLines
                         flow do
@@ -271,14 +276,24 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 clearLog
                 signalCmdIdle
             }
+            @modify = check checked: $cfgShowModify do
+                modifyCheckState
+            end
+            para "Modify", size: @paraSize
+
+            @logOnOff = check checked: $cfgUseLog do
+                logOnOffCheckState
+            end
+            para "Log", size: @paraSize
+
             #button "Test" do
             #    puts '-------set @mainStack height'
             #    #Window.style(:width => 100)#:height => 100,
             #    self.resize(100,100)
             #end
-        end
+        #end
 
-        flow do
+        #flow do
             #@modify = check checked: $cfgShowModify, :margin_left => @checkMarginLeft, :margin_top => @checkMarginTop do
             #    modifyCheckState
             #end
@@ -289,15 +304,12 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
             #end
             #para "Log", size: @paraSize, :margin_top => @paraMarginTop, :margin_left => @paraMarginLeft, :margin_right => @paraMarginRight
 
-            @modify = check checked: $cfgShowModify do
-                modifyCheckState
-            end
-            para "Modify", size: @paraSize
+            @cmdText = edit_line \
+                :resizable => true,
+                :margin_left  => 0.01,
+                :margin_right => 0.01,
+                :width        => 1.0
 
-            @logOnOff = check checked: $cfgUseLog do
-                logOnOffCheckState
-            end
-            para "Log", size: @paraSize
 
         end
 
