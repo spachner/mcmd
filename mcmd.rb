@@ -174,7 +174,8 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 cmdWithVars = $spec.getCmdTxtByIdx(cmdIdx)
                 cmd = cmdWithVars
                 puts "before var sub >#{cmd}<" if $debug
-                cmd = $exe.substitute cmd, $spec.getCmds
+                _cmd = $exe.substitute cmd, $spec.getCmds
+                cmd = $exe.substitute _cmd, $spec.getCmds
                 puts "after  var sub >#{cmd}<" if $debug
 
                 if cmdWithVars != cmd
@@ -233,12 +234,14 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 stack width: @lstackWidth, margin: 0 do
                     #background send(COLORS.keys[rand(COLORS.keys.size)])
                     background $spec.getColorResolvedByIdx(cmdIdx)
+                    #TODO substitute should run recursivly until all substitutes are done
                     buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
                     @button[cmdIdx] = button buttonText #, :width => @lstackWidth
                     hover do
                         cmdText = $exe.substitute $spec.getCmdTxtByIdx(cmdIdx), $spec.getCmds
-                        puts "hover, #{buttonText}, #{cmdText}" if $debug
-                        @cmdText.text = "#{buttonText}: #{cmdText}"
+                        cmdText2 = $exe.substitute cmdText, $spec.getCmds
+                        puts "hover, #{buttonText}, #{cmdText2}" if $debug
+                        @cmdText.text = "#{buttonText}: #{cmdText2}"
                     end
 
                     if withEditLines

@@ -6,6 +6,7 @@ class Exe
         puts "Exe.initialize " if @debug
     end
 
+    #TODO substitute should run recursivly until all substitutes are done
     def substitute str, vars
         if str == nil
             return ""
