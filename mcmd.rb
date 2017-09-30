@@ -96,7 +96,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     @lstackWidth      = $spec.getButtonWidth
     @rstackWidth      = 350
     @paraSize         = 9
-    @checkMarginTop   = 4
+    @checkMarginTop   = 6
     @checkMarginLeft  = 10
     @paraMarginTop    = @tableHeight/2 - 7
     @paraMarginLeft   = 0
@@ -241,7 +241,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                         cmdText = $exe.substitute $spec.getCmdTxtByIdx(cmdIdx), $spec.getCmds
                         cmdText2 = $exe.substitute cmdText, $spec.getCmds
                         puts "hover, #{buttonText}, #{cmdText2}" if $debug
-                        @cmdText.text = "#{buttonText}: #{cmdText2}"
+                        @cmdText.text = "#{buttonText}: #{cmdText2}" if @cmdTextvisible
                     end
 
                     if withEditLines
@@ -269,26 +269,71 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         f
     end
 
+    def createProgress
+        @progress = progress margin_left: 0.01, margin_right: 0.01, width: 1.0
+        @cmdTextvisible     = false
+        @cmdProgressVisible = true
+        @cmdEye.style(fill: yellow)
+    end
+
+    def createSuccess
+        createCmdText
+        @cmdText.text = "Success"
+        @cmdEye.style(fill: green)
+    end
+
+    def createError
+        createCmdText
+        @cmdText.text = "***Failed***"
+        @cmdEye.style(fill: red)
+    end
+
+    def createCmdText
+        if @cmdProgressVisible
+            @progressAnimation.stop
+        end
+        @cmdText = edit_line \
+            :resizable => true,
+            :margin_left  => 0.01,
+            :margin_right => 0.01,
+            :width        => 1.0
+        @cmdTextvisible     = true
+        @cmdProgressVisible = false
+    end
+
     def createFlowCtrl
         #-----------------------------------------------------------------------
-        @flowControl = flow do
-#            button("Quit")          { Shoes.quit }
-            button("Quit")          { exit 0 }
-            button("Kill Command")  { $exe.kill }
-            button("Clear Log")     {
-                clearLog
-                signalCmdIdle
-            }
-            @modify = check checked: $cfgShowModify do
-                modifyCheckState
-            end
-            para "Modify", size: @paraSize
+        @flowControl = stack do
+            flow do
+    #            button("Quit")          { Shoes.quit }
+                button("Quit")          { exit 0 }
+                button("Kill Command")  { $exe.kill }
+                button("Clear Log")     {
+                    clearLog
+                    signalCmdIdle
+                }
+                stack margin_top: @checkMarginTop, width: 120, margin_left: 0.01, margin_right: 0.01 do
+                    flow do
+                        @modify = check checked: $cfgShowModify do
+                            modifyCheckState
+                        end
+                        para "Modify"#, size: @paraSize
 
-            @logOnOff = check checked: $cfgUseLog do
-                logOnOffCheckState
+                        @logOnOff = check checked: $cfgUseLog do
+                            logOnOffCheckState
+                        end
+                        para "Log"#, size: @paraSize
+                    end
+                end
+                stack margin_top: @checkMarginTop, width: 30, margin_left: 0.01, margin_right: 0.01 do
+                    @cmdEye = oval 0, 0, 20
+                end
             end
-            para "Log", size: @paraSize
 
+            #stack margin_left: 0.01, margin_right: 0.01, height: 0.1, resizable: false do # , width: 1.0
+            #    #@progress = progress margin_left: 0.01, margin_right: 0.01, width: 1.0, resizable: true
+            #    @progress = progress width: width - 20, height: 20, resizable: true
+            #end
             #button "Test" do
             #    puts '-------set @mainStack height'
             #    #Window.style(:width => 100)#:height => 100,
@@ -307,28 +352,35 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
             #end
             #para "Log", size: @paraSize, :margin_top => @paraMarginTop, :margin_left => @paraMarginLeft, :margin_right => @paraMarginRight
 
-            @cmdText = edit_line \
-                :resizable => true,
+            #createProgress #@progress = progress margin_left: 0.01, margin_right: 0.01, width: 1.0
+
+            flow do
+                @cmdTextStack = stack do
+                    createCmdText
+                    #@cmdText = edit_line \
+                    #    :resizable => true,
+                    #    :margin_left  => 0.01,
+                    #    :margin_right => 0.01,
+                    #    :width        => 1.0
+                end
+            end
+
+            #-----------------------------------------------------------------------
+            @log = edit_box \
+                :resizable    => true,
+                :margin_top   => @logMarginTop,
                 :margin_left  => 0.01,
                 :margin_right => 0.01,
-                :width        => 1.0
-
-
+                :width        => 1.0,
+                :height       => @logHeight
+            #-----------------------------------------------------------------------
         end
-
-        #-----------------------------------------------------------------------
-        @log = edit_box \
-            :resizable    => true,
-            :margin_top   => @logMarginTop,
-            :margin_left  => 0.01,
-            :margin_right => 0.01,
-            :width        => 1.0,
-            :height       => @logHeight
-        #-----------------------------------------------------------------------
     end
 
     @mainStack = stack do
         fill system_background
+                #stack do #margin_left: 0.01, margin_right: 0.1, width: 100 do
+                #end
         #@mainBack = background rgb(100,100,100)..rgb(200,200,200)
         #     @back  = background green
 
@@ -365,10 +417,19 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def signalCmdIdle
+        @progress.fraction = 0 if @cmdProgressVisible
+        @cmdTextStack.clear { createCmdText }
+
         #background rgb(100,100,100)..rgb(200,200,200)
     end
 
     def signalCmdRun
+        @cmdTextStack.clear { createProgress }
+        if @cmdProgressVisible
+            @progressAnimation = animate do |i|
+                @progress.fraction = (i % 100) / 100.0
+            end
+        end
         @r = 204
         @g = 153
         @b =  51
@@ -425,11 +486,21 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def signalCmdEndSuccessful
+        @cmdTextStack.clear { createSuccess }
+        #f @cmdProgressVisible
+        #   @progressAnimation.stop
+        #   @progress.fraction = 100
+        #nd
         #@ani.stop
         #@mainBack = background green..lightgreen
     end
 
     def signalCmdEndError
+        @cmdTextStack.clear { createError }
+        #if @cmdProgressVisible
+        #    @progressAnimation.stop
+        #    @progress.fraction = 100
+        #end
         #@ani.stop
         #@mainBack = background red..orange
     end

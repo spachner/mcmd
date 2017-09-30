@@ -1,4 +1,6 @@
-#require 'test/unit' # throws /usr/local/Cellar/jruby/9.1.12.0/libexec/lib/ruby/stdlib/power_assert.rb:7: warning: tracing (e.g. set_trace_func) will not capture all events without --debug flag
+if __FILE__ == $0 # start unit test only when file is called directly
+    require 'test/unit'
+end
 
 class Exe
     def initialize debug
@@ -125,8 +127,10 @@ class Exe
     end
 end
 
-class MyTest #< Test::Unit::TestCase
-    @@testDebug = true
+if __FILE__ == $0
+
+class MyTest < Test::Unit::TestCase
+    @@testDebug = false
     def test_1
         assert_equal(2, 2)
         assert_not_same('2', '33')
@@ -232,5 +236,7 @@ class MyTest #< Test::Unit::TestCase
         inCmd = @exe.substitute inCmd, @vars
         assert_equal('sta-$(var1)-$(var1)-$(var2)-end', inCmd)
     end
+
+end
 
 end
