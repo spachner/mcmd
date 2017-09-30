@@ -9,16 +9,19 @@ class Exe
     end
 
     def isVarDefined var, vars
-        #puts "---------isVarDefined #{var}"
+        puts "isVarDefined #{var}" if @debug
         if !var
+            puts "\tfalse" if @debug
             return false
         end
         vars.each do |s|
             search = s[0] if s[0] != nil
             if search.include?(var)
+                puts "\ttrue" if @debug
                 return true
             end
         end
+            puts "\tfalse" if @debug
         false
     end
 
@@ -37,7 +40,8 @@ class Exe
             puts "substitute after : replace variable named >#{search}< with >#{replace}< in >#{str}<: >#{_str}<" if @debug
         end
 
-        if _str =~ /\$\((.*)\)/ and isVarDefined $1, vars
+        puts "check whether still variable in >#{_str}<" if @debug
+        if _str =~ /\$\(([^\$\(\)]*)\)/ and isVarDefined $1, vars
             puts "recursive call: >#{_str}<" if @debug
             _str = substitute _str, vars
         end
@@ -50,7 +54,7 @@ class Exe
         if exe.start_with?'./'
             exe = $spec.getBaseDir + '/' + exe
         end
-        puts "getCmdExecutable >#{cmd}< is >#{exe}<" if $debug
+        puts "getCmdExecutable >#{cmd}< is >#{exe}<" if @debug
         exe
     end
 
@@ -94,9 +98,9 @@ class Exe
         if @cmdActive
             addLogQueue "Other cmd active, ignored"
         else
-            puts "exeCmd before var sub >#{cmd}<" if $debug
+            puts "exeCmd before var sub >#{cmd}<" if @debug
             cmd = $exe.substitute cmd, $spec.getCmds
-            puts "exeCmd after  var sub >#{cmd}<" if $debug
+            puts "exeCmd after  var sub >#{cmd}<" if @debug
             @cmdActive = true
             @exit_status = -1
             #@exeRunCB.call
@@ -114,7 +118,7 @@ class Exe
                     end
                     @exit_status = wait_thr.value.exitstatus
                 end
-                puts "exitcode #{@exit_status}" if $debug
+                puts "exitcode #{@exit_status}" if @debug
                 if @exit_status == 0
                     logMessage "Command finished with success (code #{@exit_status})"
                 else
@@ -291,6 +295,31 @@ if __FILE__ == $0
             ]
             inCmd = @exe.substitute inCmd, @vars
             assert_equal('sta-abc def-end', inCmd)
+        end
+
+        def test_recursive_3
+            @exe = Exe.new @@testDebug
+            inCmd = 'sta-$(var1)-end'
+            @vars = [
+                ['var3', 'def'],
+                ['var1', '$(var3) $(var3)'],
+            ]
+            inCmd = @exe.substitute inCmd, @vars
+            assert_equal('sta-def def-end', inCmd)
+        end
+
+        def test_recursive_4
+            @exe = Exe.new @@testDebug
+            inCmd = '$(test)'
+            @vars = [
+                ['test',               'echo "sb.brstop" | $(netcat-cmd)'],
+                ['netcat-host-option', "-c -w3"],
+                ['netcat-host-ip',     'localhost'],
+                ['netcat-host-port',   '33401'],
+                ['netcat-cmd',         'netcat $(netcat-host-option) $(netcat-host-ip) $(netcat-host-port)']
+            ]
+            inCmd = @exe.substitute inCmd, @vars
+            assert_equal('echo "sb.brstop" | netcat -c -w3 localhost 33401', inCmd)
         end
     end
 end
