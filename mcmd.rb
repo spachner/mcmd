@@ -337,6 +337,10 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                     clearLog
                     signalCmdIdle
                 }
+                button("Reload Spec") {
+                    $spec.read $specFileName
+                    @mainStack.clear { createMainStack }
+                }
                 stack margin_top: @checkMarginTop, width: 120, margin_left: 0.01, margin_right: 0.01 do
                     flow do
                         @modify = check checked: $cfgShowModify do
@@ -406,18 +410,21 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         end
     end
 
-    @mainStack = stack do
-        #fill getColorGradientFromHex('#EDEDED')
-                #stack do #margin_left: 0.01, margin_right: 0.1, width: 100 do
-                #end
-        #@mainBack = background rgb(100,100,100)..rgb(200,200,200)
-        #     @back  = background green
+    def createMainStack
+        m = stack do
+            #fill getColorGradientFromHex('#EDEDED')
+                    #stack do #margin_left: 0.01, margin_right: 0.1, width: 100 do
+                    #end
+            #@mainBack = background rgb(100,100,100)..rgb(200,200,200)
+            #     @back  = background green
 
-        #@flowCmd  = createFlowCmd true
-        @flowCmd  = createFlowCmd false
-        createFlowCtrl
-        @cmdText.text = "Hover over colors to preview comands, click to lock text"
-    end # stack
+            #@flowCmd  = createFlowCmd true
+            @flowCmd  = createFlowCmd false
+            createFlowCtrl
+            @cmdText.text = "Hover over colors to preview comands, click to lock text"
+        end
+        m
+    end
 
     def modifyCheckState
         if @modify.checked?
@@ -535,6 +542,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         #@mainBack = background red..orange
     end
 
+    @mainStack = createMainStack
     #$exe.setLogCB lambda {|str| appendLog str}
     @logQueue = Queue.new
     $exe.setLogQueue @logQueue
