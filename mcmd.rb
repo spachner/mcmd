@@ -3,6 +3,7 @@
 require 'shoes' # needed by shoes4 to be run by jruby
 require 'open3'
 require 'yaml'
+require 'color' #sudo jruby -S gem install color, http://www.rubydoc.info/gems/color/1.8
 require_relative 'lib/mcmdSpec'
 require_relative 'lib/mcmdExe'
 require_relative 'lib/oscheck'
@@ -75,8 +76,24 @@ elsif os.isLinux
     $mainHeight = 100
 end
 
+
+def getColorGradientFromHex baseColorHex
+    c = Color::RGB.by_hex(baseColorHex)
+    cDiffDiff = 30
+
+    cLow  = c.adjust_brightness -cDiffDiff
+    cHigh = c.adjust_brightness +cDiffDiff
+
+    cLow.hex..cHigh.hex
+end
+
+def getColorGradientFromName colorName
+    getColorGradientFromHex(Color::RGB.by_name(colorName).hex)
+end
+
 #--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight) do
+    background getColorGradientFromHex('#EDEDED')
     @useLog  = $cfgUseLog   # init value, changed by checkbox click
 
     def clearLog
@@ -232,13 +249,18 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 #stack :height => tableHeight do
                 stack width: @lstackWidth, margin: 0 do
                     #background send(COLORS.keys[rand(COLORS.keys.size)])
-                    background $spec.getColorResolvedByIdx(cmdIdx)
+                    background getColorGradientFromHex($spec.getColorResolvedByIdx(cmdIdx))
                     buttonText = $exe.substitute $spec.getBtnTxtByIdx(cmdIdx), $spec.getCmds
                     @button[cmdIdx] = button buttonText #, :width => @lstackWidth
                     hover do
-                        cmdText = $exe.substitute $spec.getCmdTxtByIdx(cmdIdx), $spec.getCmds
-                        puts "hover, #{buttonText}, #{cmdText}" if $debug
-                        @cmdText.text = "#{buttonText}: #{cmdText}" if @cmdTextvisible
+                        if @cmdTextHint.hidden
+                            cmdText = $exe.substitute $spec.getCmdTxtByIdx(cmdIdx), $spec.getCmds
+                            puts "hover, #{buttonText}, #{cmdText}" if $debug
+                            @cmdText.text = "#{buttonText}: #{cmdText}" if @cmdTextvisible
+                        end
+                    end
+                    click do
+                        @cmdTextHint.toggle
                     end
 
                     if withEditLines
@@ -266,23 +288,29 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         f
     end
 
+    def CmdEyeSetColorByName colorName
+        c = getColorGradientFromName(colorName)
+        @cmdEye.style(fill: c, stroke: c)
+    end
+
     def createProgress
         @progress = progress margin_left: 0.01, margin_right: 0.01, width: 1.0
         @cmdTextvisible     = false
         @cmdProgressVisible = true
-        @cmdEye.style(fill: yellow)
+        CmdEyeSetColorByName('yellow')
+        @cmdTextHint.hide
     end
 
     def createSuccess
         createCmdText
         @cmdText.text = "Success"
-        @cmdEye.style(fill: green)
+        CmdEyeSetColorByName('green')
     end
 
     def createError
         createCmdText
         @cmdText.text = "***Failed***"
-        @cmdEye.style(fill: red)
+        CmdEyeSetColorByName('red')
     end
 
     def createCmdText
@@ -324,7 +352,11 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                 end
                 stack margin_top: @checkMarginTop, width: 30, margin_left: 0.01, margin_right: 0.01 do
                     @cmdEye = oval 0, 0, 20
+                    CmdEyeSetColorByName 'yellow'
                 end
+                @cmdTextHint = para "cmd text locked, click again to release",
+                    margin_top: @checkMarginTop, stroke: red, margin_left: 0.01, margin_right: 0.01
+                @cmdTextHint.hide
             end
 
             #stack margin_left: 0.01, margin_right: 0.01, height: 0.1, resizable: false do # , width: 1.0
@@ -375,7 +407,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     @mainStack = stack do
-        fill system_background
+        #fill getColorGradientFromHex('#EDEDED')
                 #stack do #margin_left: 0.01, margin_right: 0.1, width: 100 do
                 #end
         #@mainBack = background rgb(100,100,100)..rgb(200,200,200)
@@ -384,6 +416,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         #@flowCmd  = createFlowCmd true
         @flowCmd  = createFlowCmd false
         createFlowCtrl
+        @cmdText.text = "Hover over colors to preview comands, click to lock text"
     end # stack
 
     def modifyCheckState
