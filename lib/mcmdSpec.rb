@@ -5,6 +5,7 @@ $specVersionKey  = 'version'
 $specButtonWidth = 'buttonWidth'
 $specBaseDirKey  = 'baseDir'
 $specColors      = 'colors'
+$specColorGradientPercent = 'colorsGradientPercent'
 $specCommandKey  = 'commands'
 
 $exampleSpec = {
@@ -12,6 +13,7 @@ $exampleSpec = {
     $specButtonWidth => 250,
     $specBaseDirKey  => Dir.pwd,
     $specColors      => ['#00FFFF', '#0000FF', '#FF8000', '#FFFF00'],  # see Shoes::COLORS
+    $specColorGradientPercent => 30,
     $specCommandKey  => [
         ['ls -1',                'ls -1', 0],                      # arguments (here '-1') as just added to command string
         ['ls -l',                'ls -l', 1],
@@ -93,6 +95,10 @@ class Spec
 
     def getColors
         @cfgSpec[$specColors]
+    end
+
+    def getColorGradientPercent
+        @cfgSpec[$specColorGradientPercent]
     end
 
     def getCmds

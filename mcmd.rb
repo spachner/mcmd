@@ -79,7 +79,7 @@ end
 
 def getColorGradientFromHex baseColorHex
     c = Color::RGB.by_hex(baseColorHex)
-    cDiffDiff = 30
+    cDiffDiff = $spec.getColorGradientPercent
 
     cLow  = c.adjust_brightness -cDiffDiff
     cHigh = c.adjust_brightness +cDiffDiff
