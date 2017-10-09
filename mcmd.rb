@@ -84,7 +84,7 @@ def getColorGradientFromHex baseColorHex
     cLow  = c.adjust_brightness -cDiffDiff
     cHigh = c.adjust_brightness +cDiffDiff
 
-    cLow.hex..cHigh.hex
+    cHigh.hex..cLow.hex
 end
 
 def getColorGradientFromName colorName
@@ -326,17 +326,31 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
         @cmdProgressVisible = false
     end
 
+    def buttonExeEditSpec
+        editor = $spec.getEditor
+        cmd = "#{editor} #{$specFileName}"
+        puts "Try to execute >#{cmd}<" if $debug
+        if $exe.isCmdExecutable editor
+            `#{cmd}`
+        else
+            appendLog "Editor #{editor} defined in spec file is not exectutable\n"
+        end
+    end
+
     def createFlowCtrl
         #-----------------------------------------------------------------------
         @flowControl = stack do
             flow do
-    #            button("Quit")          { Shoes.quit }
                 button("Quit")          { exit 0 }
                 button("Kill Command")  { $exe.kill }
                 button("Clear Log")     {
                     clearLog
                     signalCmdIdle
                 }
+                button("Edit Spec") {
+                    buttonExeEditSpec
+                }
+
                 button("Reload Spec") {
                     $spec.read $specFileName
                     @mainStack.clear { createMainStack }

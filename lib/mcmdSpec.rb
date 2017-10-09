@@ -4,6 +4,7 @@ $specVersion     = 2      # 1: initial, 2: with color
 $specVersionKey  = 'version'
 $specButtonWidth = 'buttonWidth'
 $specBaseDirKey  = 'baseDir'
+$specEditor      = 'editor'
 $specColors      = 'colors'
 $specColorGradientPercent = 'colorsGradientPercent'
 $specCommandKey  = 'commands'
@@ -12,6 +13,7 @@ $exampleSpec = {
     $specVersionKey  => $specVersion,
     $specButtonWidth => 250,
     $specBaseDirKey  => Dir.pwd,
+    $specEditor      => 'subl',
     $specColors      => ['#00FFFF', '#0000FF', '#FF8000', '#FFFF00'],  # see Shoes::COLORS
     $specColorGradientPercent => 30,
     $specCommandKey  => [
@@ -83,6 +85,10 @@ class Spec
 
     def getBaseDir
         @cfgSpec[$specBaseDirKey]
+    end
+
+    def getEditor
+        @cfgSpec[$specEditor]
     end
 
     def setBaseDir dir, write
