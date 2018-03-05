@@ -1,13 +1,14 @@
 #--- mcmd spec file handling
 
-$specVersion     = 2      # 1: initial, 2: with color
-$specVersionKey  = 'version'
-$specButtonWidth = 'buttonWidth'
-$specBaseDirKey  = 'baseDir'
-$specEditor      = 'editor'
-$specColors      = 'colors'
+$specVersion              = 3      # 1: initial, 2: with colorm 3: with omitButtonsWithColor
+$specVersionKey           = 'version'
+$specButtonWidth          = 'buttonWidth'
+$specBaseDirKey           = 'baseDir'
+$specEditor               = 'editor'
+$specColors               = 'colors'
 $specColorGradientPercent = 'colorsGradientPercent'
-$specCommandKey  = 'commands'
+$specCommandKey           = 'commands'
+$specOmitButtonsWithColor = 'omitButtonsWithColor'
 
 $exampleSpec = {
     $specVersionKey  => $specVersion,
@@ -16,6 +17,7 @@ $exampleSpec = {
     $specEditor      => 'subl',
     $specColors      => ['#00FFFF', '#0000FF', '#FF8000', '#FFFF00'],  # see Shoes::COLORS
     $specColorGradientPercent => 30,
+    $specOmitButtonsWithColor => -1,                               # omit button drawing when number is same as color
     $specCommandKey  => [
         ['ls -1',                'ls -1', 0],                      # arguments (here '-1') as just added to command string
         ['ls -l',                'ls -l', 1],
@@ -107,6 +109,10 @@ class Spec
         @cfgSpec[$specColorGradientPercent]
     end
 
+    def getOmitButtonsWithColor
+        @cfgSpec[$specOmitButtonsWithColor]
+    end
+
     def getCmds
         @cfgSpec[$specCommandKey]
     end
@@ -125,6 +131,12 @@ class Spec
 
     def getColorByIdx cmdIdx
         getCmdByIdx(cmdIdx)[2]
+    end
+
+    def isColorToInhibitByIdx cmdIdx
+        specedColor  = number_or_nil getColorByIdx(cmdIdx)
+        inhibitColor = getOmitButtonsWithColor
+        specedColor == inhibitColor
     end
 
     def number_or_nil(v)

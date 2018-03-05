@@ -1,5 +1,5 @@
 # MacOS: start with 'jruby -J-XstartOnFirstThread mcmd.rb'
-
+#
 require 'shoes' # needed by shoes4 to be run by jruby
 require 'open3'
 require 'yaml'
@@ -120,7 +120,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     @paraMarginRight  = 10
     @logMarginTop     = 10
     @logMarginLeft    = 6
-    @logHeight        = 100
+    @logHeight        = 180
     @logWidth         = $mainWidth
     @workersHandleRatePerSec = 3
 
@@ -185,6 +185,9 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     def registerEventHandlers
         # Event handler ------------------------------------------------------------
         $spec.getCmds.size.times do |cmdIdx|
+            if $spec.isColorToInhibitByIdx(cmdIdx)
+                next
+            end
             @button[cmdIdx].click do
                 clearLog
 
@@ -247,6 +250,10 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
             @color  = Array.new
             $spec.getCmds.size.times do |cmdIdx|
                 #stack :height => tableHeight do
+                if $spec.isColorToInhibitByIdx(cmdIdx)
+                    puts "Button with idx #{cmdIdx} skipped" if $debug
+                    next
+                end
                 stack width: @lstackWidth, margin: 0 do
                     #background send(COLORS.keys[rand(COLORS.keys.size)])
                     background getColorGradientFromHex($spec.getColorResolvedByIdx(cmdIdx))
