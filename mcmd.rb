@@ -1,4 +1,9 @@
-# MacOS: start with 'jruby -J-XstartOnFirstThread mcmd.rb'
+# MacOS install:
+#   brew install jruby
+#   sudo jruby -S gem install shoes --pre
+#   sudo jruby -S gem install color
+#
+# MacOS start: 'jruby -J-XstartOnFirstThread mcmd.rb'
 #
 require 'shoes' # needed by shoes4 to be run by jruby
 require 'open3'
