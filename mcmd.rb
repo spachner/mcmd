@@ -20,7 +20,7 @@ require_relative 'lib/oscheck'
 #   /absolute/path/to/cshoes /absolute/path/to/mcmd.rb [`pwd`/<my-conf-file>.yaml]
 
 $debug         = false  # true for a little debug
-$cfgUseLog     = true   # default state of option
+$cfgUseLog     = true  # default state of option
 $cfgShowModify = false  # default state of option
 # default spec file name, may be overritten by command line argument
 $specFileName  = File.expand_path('./', 'mcmd-conf.yaml')
@@ -96,9 +96,17 @@ def getColorGradientFromName colorName
     getColorGradientFromHex(Color::RGB.by_name(colorName).hex)
 end
 
+def setBackGround
+    if $spec.isDarkMode
+        background getColorGradientFromHex('#262728')
+    else
+        background getColorGradientFromHex('#EDEDED')
+    end
+end
+
 #--- Shoes main ----------------------------------------------------------------
 Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight) do
-    background getColorGradientFromHex('#EDEDED')
+    setBackGround
     @useLog  = $cfgUseLog   # init value, changed by checkbox click
 
     def clearLog
@@ -372,12 +380,17 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
                         @modify = check checked: $cfgShowModify do
                             modifyCheckState
                         end
-                        para "Modify"#, size: @paraSize
+                        if $spec.isDarkMode
+                            @color = white
+                        else
+                            @color = black
+                        end
+                        para "Modify", stroke: @color#, size: @paraSize
 
                         @logOnOff = check checked: $cfgUseLog do
                             logOnOffCheckState
                         end
-                        para "Log"#, size: @paraSize
+                        para "Log", stroke: @color#, size: @paraSize
                     end
                 end
                 stack margin_top: @checkMarginTop, width: 30, margin_left: 0.01, margin_right: 0.01 do
@@ -437,6 +450,7 @@ Shoes.app(title: "mcmd", resizable: true, width: $mainWidth, height: $mainHeight
     end
 
     def createMainStack
+        setBackGround
         m = stack do
             #fill getColorGradientFromHex('#EDEDED')
                     #stack do #margin_left: 0.01, margin_right: 0.1, width: 100 do

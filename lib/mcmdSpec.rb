@@ -1,7 +1,8 @@
 #--- mcmd spec file handling
 
-$specVersion              = 3      # 1: initial, 2: with colorm 3: with omitButtonsWithColor
+$specVersion              = 4      # 1: initial, 2: with color, 3: with omitButtonsWithColor, 4: with darkMode
 $specVersionKey           = 'version'
+$specDarkMode             = 'darkMode'
 $specButtonWidth          = 'buttonWidth'
 $specBaseDirKey           = 'baseDir'
 $specEditor               = 'editor'
@@ -12,6 +13,7 @@ $specOmitButtonsWithColor = 'omitButtonsWithColor'
 
 $exampleSpec = {
     $specVersionKey  => $specVersion,
+    $specDarkMode    => 1,
     $specButtonWidth => 250,
     $specBaseDirKey  => Dir.pwd,
     $specEditor      => 'subl',
@@ -44,6 +46,10 @@ class Spec
 
     def getVersion
         @cfgSpec[$specVersionKey]
+    end
+
+    def isDarkMode
+        @cfgSpec[$specDarkMode] == true
     end
 
     def getButtonWidth
